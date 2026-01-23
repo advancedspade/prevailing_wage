@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { STATUS_LABELS, STATUS_COLORS } from '@/lib/types'
+import { STATUS_LABELS } from '@/lib/types'
 
 export default async function TicketsPage() {
   const supabase = await createClient()

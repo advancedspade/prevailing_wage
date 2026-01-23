@@ -10,7 +10,7 @@ export interface Profile {
   updated_at: string
 }
 
-export type TicketStatus = 'pending' | 'prevailing_wage_entered' | 'awaiting_pay' | 'upload_to_dir' | 'completed'
+export type TicketStatus = 'pending' | 'awaiting_pay' | 'ready_for_dir'
 
 export interface Ticket {
   id: string
@@ -20,7 +20,6 @@ export interface Ticket {
   date_worked: string
   hours_worked: number
   status: TicketStatus
-  pdf_url: string | null
   created_at: string
   updated_at: string
   // Joined data
@@ -30,18 +29,68 @@ export interface Ticket {
 // Status display labels
 export const STATUS_LABELS: Record<TicketStatus, string> = {
   pending: 'Pending',
-  prevailing_wage_entered: 'Prevailing Wage Entered',
   awaiting_pay: 'Awaiting Pay',
-  upload_to_dir: 'Upload to DIR',
-  completed: 'Completed'
+  ready_for_dir: 'Ready for DIR'
 }
 
-// Status colors for UI
-export const STATUS_COLORS: Record<TicketStatus, string> = {
-  pending: 'bg-yellow-100 text-yellow-800',
-  prevailing_wage_entered: 'bg-blue-100 text-blue-800',
-  awaiting_pay: 'bg-purple-100 text-purple-800',
-  upload_to_dir: 'bg-orange-100 text-orange-800',
-  completed: 'bg-green-100 text-green-800'
+// Pay period helpers
+export interface PayPeriod {
+  year: number
+  month: number
+  period: 1 | 2 // 1 = 1st-15th, 2 = 16th-end
+  startDate: Date
+  endDate: Date
+  label: string
+}
+
+export function getPayPeriod(date: Date): PayPeriod {
+  const year = date.getFullYear()
+  const month = date.getMonth()
+  const day = date.getDate()
+
+  if (day <= 15) {
+    return {
+      year,
+      month,
+      period: 1,
+      startDate: new Date(year, month, 1),
+      endDate: new Date(year, month, 15),
+      label: formatPayPeriodLabel(year, month, 1)
+    }
+  } else {
+    const lastDay = new Date(year, month + 1, 0).getDate()
+    return {
+      year,
+      month,
+      period: 2,
+      startDate: new Date(year, month, 16),
+      endDate: new Date(year, month, lastDay),
+      label: formatPayPeriodLabel(year, month, 2)
+    }
+  }
+}
+
+export function formatPayPeriodLabel(year: number, month: number, period: 1 | 2): string {
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const lastDay = new Date(year, month + 1, 0).getDate()
+
+  if (period === 1) {
+    return `${monthNames[month]} 1-15, ${year}`
+  } else {
+    return `${monthNames[month]} 16-${lastDay}, ${year}`
+  }
+}
+
+export function getPayPeriodKey(year: number, month: number, period: 1 | 2): string {
+  return `${year}-${String(month + 1).padStart(2, '0')}-${period}`
+}
+
+export function parsePayPeriodKey(key: string): { year: number; month: number; period: 1 | 2 } {
+  const [year, month, period] = key.split('-')
+  return {
+    year: parseInt(year),
+    month: parseInt(month) - 1,
+    period: parseInt(period) as 1 | 2
+  }
 }
 

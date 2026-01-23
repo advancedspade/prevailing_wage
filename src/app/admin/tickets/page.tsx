@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { TicketActions } from './ticket-actions'
-import { STATUS_LABELS, STATUS_COLORS } from '@/lib/types'
+import { STATUS_LABELS } from '@/lib/types'
 
 export default async function AdminTicketsPage() {
   const supabase = await createClient()
@@ -108,7 +108,7 @@ export default async function AdminTicketsPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <TicketActions ticketId={ticket.id} currentStatus={ticket.status} pdfUrl={ticket.pdf_url} />
+                      <TicketActions ticketId={ticket.id} currentStatus={ticket.status} />
                     </td>
                   </tr>
                 ))}

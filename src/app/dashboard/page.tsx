@@ -58,16 +58,28 @@ export default async function DashboardPage() {
 
         {isAdmin ? (
           // Admin Dashboard
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Link
+              href="/admin/periods"
+              className="block p-8 text-white transition-colors"
+              style={{ background: '#1a1a2e' }}
+            >
+              <h3 className="text-lg font-medium">
+                Pay Periods
+              </h3>
+              <p className="mt-2 text-sm opacity-80">
+                View tickets by pay period and generate XML
+              </p>
+            </Link>
             <Link
               href="/admin/tickets"
               className="block p-8 bg-white border border-gray-200 hover:border-gray-400 transition-colors"
             >
               <h3 className="text-lg font-medium" style={{ color: '#1a1a2e' }}>
-                Manage Tickets
+                All Tickets
               </h3>
               <p className="mt-2 text-sm" style={{ color: '#6b7280' }}>
-                View and manage all submitted wage tickets
+                View all submitted wage tickets
               </p>
             </Link>
             <Link
