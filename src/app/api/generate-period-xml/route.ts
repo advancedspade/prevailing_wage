@@ -95,13 +95,20 @@ ${tickets?.map(t => `    <Ticket>
   <GeneratedAt>${new Date().toISOString()}</GeneratedAt>
 </DIRSubmission>`
 
-  // Update all tickets to ready_for_dir status
-  if (tickets && tickets.length > 0) {
-    await supabase
-      .from('tickets')
-      .update({ status: 'ready_for_dir' })
-      .in('id', tickets.map(t => t.id))
-  }
+  // Update employee_period status to ready_for_dir and save wage
+  await supabase
+    .from('employee_periods')
+    .upsert({
+      user_id: userId,
+      year,
+      month,
+      period,
+      status: 'ready_for_dir',
+      hourly_wage: wage,
+      updated_at: new Date().toISOString()
+    }, {
+      onConflict: 'user_id,year,month,period'
+    })
 
   return NextResponse.json({ xml })
 }

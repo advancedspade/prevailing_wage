@@ -94,3 +94,20 @@ export function parsePayPeriodKey(key: string): { year: number; month: number; p
   }
 }
 
+// Employee period status (tracks employee's workflow through a pay period)
+export type EmployeePeriodStatus = 'pending' | 'awaiting_pay' | 'ready_for_dir'
+
+export interface EmployeePeriod {
+  id: string
+  user_id: string
+  year: number
+  month: number
+  period: 1 | 2
+  status: EmployeePeriodStatus
+  hourly_wage: number | null
+  created_at: string
+  updated_at: string
+  // Joined data
+  profile?: Profile
+}
+

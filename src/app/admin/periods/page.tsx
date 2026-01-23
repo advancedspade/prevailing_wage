@@ -1,24 +1,34 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { getPayPeriod, getPayPeriodKey, formatPayPeriodLabel } from '@/lib/types'
+import { getPayPeriod, getPayPeriodKey } from '@/lib/types'
+import type { Profile, Ticket, EmployeePeriodStatus } from '@/lib/types'
+import { PeriodsClient } from './periods-client'
 
-interface PeriodSummary {
+interface EmployeeData {
+  profile: Profile
+  tickets: Ticket[]
+  totalHours: number
+  totalAdjustedHours: number
+  periodStatus: EmployeePeriodStatus
+  employeePeriodId?: string
+  hourlyWage?: number | null
+}
+
+interface PeriodData {
   key: string
   label: string
   year: number
   month: number
   period: 1 | 2
-  ticketCount: number
-  employeeCount: number
-  totalAdjustedHours: number
+  employees: EmployeeData[]
 }
 
 export default async function PayPeriodsPage() {
   const supabase = await createClient()
-  
+
   const { data: { user } } = await supabase.auth.getUser()
-  
+
   if (!user) {
     redirect('/login')
   }
@@ -34,44 +44,81 @@ export default async function PayPeriodsPage() {
     redirect('/dashboard')
   }
 
-  // Get all tickets
+  // Get all tickets with profiles
   const { data: tickets } = await supabase
     .from('tickets')
     .select('*, profile:profiles(*)')
     .order('date_worked', { ascending: false })
 
-  // Group tickets by pay period
-  const periodMap = new Map<string, PeriodSummary>()
-  const employeesPerPeriod = new Map<string, Set<string>>()
+  // Get all employee_periods
+  const { data: employeePeriods } = await supabase
+    .from('employee_periods')
+    .select('*')
+
+  // Build a lookup for employee period statuses
+  const periodStatusMap = new Map<string, { status: EmployeePeriodStatus; id: string; hourlyWage: number | null }>()
+  employeePeriods?.forEach(ep => {
+    const key = `${ep.user_id}-${ep.year}-${ep.month}-${ep.period}`
+    periodStatusMap.set(key, { status: ep.status, id: ep.id, hourlyWage: ep.hourly_wage })
+  })
+
+  // Group tickets by pay period, then by employee
+  const periodMap = new Map<string, PeriodData>()
+  const employeeTickets = new Map<string, { profile: Profile; tickets: Ticket[] }>()
 
   tickets?.forEach((ticket) => {
     const date = new Date(ticket.date_worked)
     const payPeriod = getPayPeriod(date)
-    const key = getPayPeriodKey(payPeriod.year, payPeriod.month, payPeriod.period)
-    
-    if (!periodMap.has(key)) {
-      periodMap.set(key, {
-        key,
+    const periodKey = getPayPeriodKey(payPeriod.year, payPeriod.month, payPeriod.period)
+    const empKey = `${periodKey}-${ticket.user_id}`
+
+    if (!periodMap.has(periodKey)) {
+      periodMap.set(periodKey, {
+        key: periodKey,
         label: payPeriod.label,
         year: payPeriod.year,
         month: payPeriod.month,
         period: payPeriod.period,
-        ticketCount: 0,
-        employeeCount: 0,
-        totalAdjustedHours: 0
+        employees: []
       })
-      employeesPerPeriod.set(key, new Set())
     }
 
-    const summary = periodMap.get(key)!
-    summary.ticketCount++
-    summary.totalAdjustedHours += Number(ticket.hours_worked) * 1.25
-    employeesPerPeriod.get(key)!.add(ticket.user_id)
+    if (!employeeTickets.has(empKey)) {
+      employeeTickets.set(empKey, {
+        profile: ticket.profile as Profile,
+        tickets: []
+      })
+    }
+
+    employeeTickets.get(empKey)!.tickets.push(ticket)
   })
 
-  // Update employee counts
-  periodMap.forEach((summary, key) => {
-    summary.employeeCount = employeesPerPeriod.get(key)?.size || 0
+  // Build employee data for each period
+  periodMap.forEach((periodData) => {
+    const employees: EmployeeData[] = []
+
+    employeeTickets.forEach((empData, empKey) => {
+      if (!empKey.startsWith(periodData.key)) return
+
+      const totalHours = empData.tickets.reduce((sum, t) => sum + Number(t.hours_worked), 0)
+      const userId = empData.profile.id
+      const statusKey = `${userId}-${periodData.year}-${periodData.month}-${periodData.period}`
+      const periodStatusData = periodStatusMap.get(statusKey)
+
+      employees.push({
+        profile: empData.profile,
+        tickets: empData.tickets.sort((a, b) => new Date(a.date_worked).getTime() - new Date(b.date_worked).getTime()),
+        totalHours,
+        totalAdjustedHours: totalHours * 1.25,
+        periodStatus: periodStatusData?.status || 'pending',
+        employeePeriodId: periodStatusData?.id,
+        hourlyWage: periodStatusData?.hourlyWage
+      })
+    })
+
+    periodData.employees = employees.sort((a, b) =>
+      (a.profile.full_name || a.profile.email).localeCompare(b.profile.full_name || b.profile.email)
+    )
   })
 
   // Sort periods by date (newest first)
@@ -101,43 +148,8 @@ export default async function PayPeriodsPage() {
         <h2 className="text-2xl font-light tracking-tight mb-6" style={{ color: '#1a1a2e' }}>
           Pay Periods
         </h2>
-        
-        <div className="bg-white border border-gray-200 overflow-hidden">
-          {periods.length > 0 ? (
-            <div className="divide-y divide-gray-200">
-              {periods.map((period) => (
-                <Link
-                  key={period.key}
-                  href={`/admin/periods/${period.key}`}
-                  className="block p-6 hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h3 className="text-lg font-medium" style={{ color: '#1a1a2e' }}>
-                        {period.label}
-                      </h3>
-                      <p className="text-sm mt-1" style={{ color: '#6b7280' }}>
-                        {period.employeeCount} employee{period.employeeCount !== 1 ? 's' : ''} · {period.ticketCount} ticket{period.ticketCount !== 1 ? 's' : ''}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-medium" style={{ color: '#1a1a2e' }}>
-                        {period.totalAdjustedHours.toFixed(2)}
-                      </p>
-                      <p className="text-sm" style={{ color: '#6b7280' }}>
-                        adjusted hours
-                      </p>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-16">
-              <p style={{ color: '#6b7280' }}>No tickets submitted yet</p>
-            </div>
-          )}
-        </div>
+
+        <PeriodsClient periods={periods} />
       </main>
     </div>
   )
