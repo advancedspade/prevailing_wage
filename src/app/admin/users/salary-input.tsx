@@ -38,7 +38,7 @@ export function SalaryInput({ userId, currentSalary }: SalaryInputProps) {
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-gray-500">$</span>
+      <span style={{ color: '#6b7280' }}>$</span>
       <input
         type="number"
         min="0"
@@ -46,17 +46,19 @@ export function SalaryInput({ userId, currentSalary }: SalaryInputProps) {
         value={salary}
         onChange={(e) => setSalary(e.target.value)}
         placeholder="0.00"
-        className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+        className="w-24 px-2 py-1.5 text-sm border border-gray-300 focus:border-gray-900 focus:ring-0 transition-colors"
+        style={{ background: '#fafafa' }}
       />
       <button
         onClick={handleSave}
         disabled={loading || !salary}
-        className="px-2 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50"
+        className="px-3 py-1.5 text-xs font-medium text-white transition-colors disabled:opacity-50"
+        style={{ background: '#1a1a2e' }}
       >
         {loading ? '...' : 'Save'}
       </button>
       {saved && (
-        <span className="text-xs text-green-600">✓ Saved</span>
+        <span className="text-xs" style={{ color: '#1a1a2e' }}>✓</span>
       )}
     </div>
   )

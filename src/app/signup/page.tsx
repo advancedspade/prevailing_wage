@@ -41,25 +41,25 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow">
+    <div className="min-h-screen flex items-center justify-center" style={{ background: '#e8e8e8' }}>
+      <div className="max-w-md w-full space-y-8 p-10 bg-white border border-gray-200">
         <div>
-          <h2 className="text-center text-3xl font-bold text-gray-900">
+          <h2 className="text-3xl font-light tracking-tight" style={{ color: '#1a1a2e' }}>
             Create Account
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Sign up for Prevailing Wage Tracker
+          <p className="mt-2 text-sm" style={{ color: '#6b7280' }}>
+            Join Advanced Spade Wage Tracker
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSignup}>
           {error && (
-            <div className="bg-red-50 text-red-500 p-3 rounded-md text-sm">
+            <div className="bg-red-50 text-red-600 p-3 text-sm border border-red-200">
               {error}
             </div>
           )}
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div>
-              <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="fullName" className="block text-sm font-medium" style={{ color: '#1a1a2e' }}>
                 Full Name
               </label>
               <input
@@ -69,12 +69,13 @@ export default function SignupPage() {
                 required
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="mt-1 block w-full px-3 py-2.5 border border-gray-300 focus:border-gray-900 focus:ring-0 transition-colors"
+                style={{ background: '#fafafa' }}
               />
             </div>
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
+              <label htmlFor="email" className="block text-sm font-medium" style={{ color: '#1a1a2e' }}>
+                Email
               </label>
               <input
                 id="email"
@@ -83,11 +84,12 @@ export default function SignupPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="mt-1 block w-full px-3 py-2.5 border border-gray-300 focus:border-gray-900 focus:ring-0 transition-colors"
+                style={{ background: '#fafafa' }}
               />
             </div>
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="password" className="block text-sm font-medium" style={{ color: '#1a1a2e' }}>
                 Password
               </label>
               <input
@@ -98,35 +100,36 @@ export default function SignupPage() {
                 minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="mt-1 block w-full px-3 py-2.5 border border-gray-300 focus:border-gray-900 focus:ring-0 transition-colors"
+                style={{ background: '#fafafa' }}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium mb-3" style={{ color: '#1a1a2e' }}>
                 Account Type
               </label>
-              <div className="flex gap-4">
-                <label className="flex items-center">
+              <div className="flex gap-6">
+                <label className="flex items-center cursor-pointer">
                   <input
                     type="radio"
                     name="role"
                     value="user"
                     checked={role === 'user'}
                     onChange={() => setRole('user')}
-                    className="mr-2"
+                    className="mr-2 accent-gray-900"
                   />
-                  <span className="text-sm text-gray-700">User (Submit Tickets)</span>
+                  <span className="text-sm" style={{ color: '#1a1a2e' }}>Employee</span>
                 </label>
-                <label className="flex items-center">
+                <label className="flex items-center cursor-pointer">
                   <input
                     type="radio"
                     name="role"
                     value="admin"
                     checked={role === 'admin'}
                     onChange={() => setRole('admin')}
-                    className="mr-2"
+                    className="mr-2 accent-gray-900"
                   />
-                  <span className="text-sm text-gray-700">Admin (Manage Tickets)</span>
+                  <span className="text-sm" style={{ color: '#1a1a2e' }}>Admin</span>
                 </label>
               </div>
             </div>
@@ -135,14 +138,17 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+            className="w-full py-3 px-4 text-sm font-medium text-white transition-colors disabled:opacity-50"
+            style={{ background: '#1a1a2e' }}
+            onMouseOver={(e) => e.currentTarget.style.background = '#2d2d44'}
+            onMouseOut={(e) => e.currentTarget.style.background = '#1a1a2e'}
           >
             {loading ? 'Creating account...' : 'Sign up'}
           </button>
 
-          <p className="text-center text-sm text-gray-600">
+          <p className="text-center text-sm" style={{ color: '#6b7280' }}>
             Already have an account?{' '}
-            <Link href="/login" className="text-blue-600 hover:text-blue-500">
+            <Link href="/login" className="font-medium hover:underline" style={{ color: '#1a1a2e' }}>
               Sign in
             </Link>
           </p>

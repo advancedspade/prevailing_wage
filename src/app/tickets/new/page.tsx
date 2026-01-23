@@ -49,36 +49,36 @@ export default function NewTicketPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow">
+    <div className="min-h-screen" style={{ background: '#e8e8e8' }}>
+      <nav className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center gap-4">
-              <Link href="/dashboard" className="text-xl font-bold text-gray-900">
-                Prevailing Wage Tracker
+              <Link href="/dashboard" className="text-xl font-light tracking-tight" style={{ color: '#1a1a2e' }}>
+                Advanced Spade
               </Link>
-              <span className="text-gray-400">/</span>
-              <span className="text-gray-600">New Ticket</span>
+              <span style={{ color: '#d1d1d1' }}>/</span>
+              <span className="text-sm" style={{ color: '#6b7280' }}>New Ticket</span>
             </div>
           </div>
         </div>
       </nav>
 
-      <main className="max-w-2xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-6">
+      <main className="max-w-2xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <div className="bg-white border border-gray-200 p-8">
+          <h2 className="text-2xl font-light tracking-tight mb-8" style={{ color: '#1a1a2e' }}>
             Create New Ticket
           </h2>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
-              <div className="bg-red-50 text-red-500 p-3 rounded-md text-sm">
+              <div className="bg-red-50 text-red-600 p-3 text-sm border border-red-200">
                 {error}
               </div>
             )}
 
             <div>
-              <label htmlFor="dirNumber" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="dirNumber" className="block text-sm font-medium" style={{ color: '#1a1a2e' }}>
                 DIR Number
               </label>
               <input
@@ -88,12 +88,13 @@ export default function NewTicketPage() {
                 value={dirNumber}
                 onChange={(e) => setDirNumber(e.target.value)}
                 placeholder="e.g., 1234567"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="mt-1 block w-full px-3 py-2.5 border border-gray-300 focus:border-gray-900 focus:ring-0 transition-colors"
+                style={{ background: '#fafafa' }}
               />
             </div>
 
             <div>
-              <label htmlFor="projectTitle" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="projectTitle" className="block text-sm font-medium" style={{ color: '#1a1a2e' }}>
                 Project Title
               </label>
               <input
@@ -103,12 +104,13 @@ export default function NewTicketPage() {
                 value={projectTitle}
                 onChange={(e) => setProjectTitle(e.target.value)}
                 placeholder="e.g., Highway 101 Bridge Repair"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="mt-1 block w-full px-3 py-2.5 border border-gray-300 focus:border-gray-900 focus:ring-0 transition-colors"
+                style={{ background: '#fafafa' }}
               />
             </div>
 
             <div>
-              <label htmlFor="dateWorked" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="dateWorked" className="block text-sm font-medium" style={{ color: '#1a1a2e' }}>
                 Date Worked
               </label>
               <input
@@ -117,12 +119,13 @@ export default function NewTicketPage() {
                 required
                 value={dateWorked}
                 onChange={(e) => setDateWorked(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="mt-1 block w-full px-3 py-2.5 border border-gray-300 focus:border-gray-900 focus:ring-0 transition-colors"
+                style={{ background: '#fafafa' }}
               />
             </div>
 
             <div>
-              <label htmlFor="hoursWorked" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="hoursWorked" className="block text-sm font-medium" style={{ color: '#1a1a2e' }}>
                 Hours Worked
               </label>
               <input
@@ -135,21 +138,24 @@ export default function NewTicketPage() {
                 value={hoursWorked}
                 onChange={(e) => setHoursWorked(e.target.value)}
                 placeholder="e.g., 8"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="mt-1 block w-full px-3 py-2.5 border border-gray-300 focus:border-gray-900 focus:ring-0 transition-colors"
+                style={{ background: '#fafafa' }}
               />
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex gap-4 pt-4">
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                className="flex-1 py-3 px-4 text-sm font-medium text-white transition-colors disabled:opacity-50"
+                style={{ background: '#1a1a2e' }}
               >
                 {loading ? 'Creating...' : 'Create Ticket'}
               </button>
               <Link
                 href="/dashboard"
-                className="py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                className="py-3 px-6 border border-gray-300 text-sm font-medium transition-colors hover:border-gray-400"
+                style={{ color: '#1a1a2e' }}
               >
                 Cancel
               </Link>

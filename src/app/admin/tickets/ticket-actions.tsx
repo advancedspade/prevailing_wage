@@ -84,7 +84,8 @@ export function TicketActions({ ticketId, currentStatus, pdfUrl }: TicketActions
         <button
           onClick={() => updateStatus('prevailing_wage_entered')}
           disabled={loading}
-          className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 disabled:opacity-50"
+          className="px-3 py-1.5 text-xs font-medium border border-gray-300 hover:border-gray-500 transition-colors disabled:opacity-50"
+          style={{ color: '#1a1a2e' }}
         >
           Mark Wage Entered
         </button>
@@ -93,7 +94,8 @@ export function TicketActions({ ticketId, currentStatus, pdfUrl }: TicketActions
         <button
           onClick={() => updateStatus('awaiting_pay')}
           disabled={loading}
-          className="px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded hover:bg-purple-100 disabled:opacity-50"
+          className="px-3 py-1.5 text-xs font-medium border border-gray-300 hover:border-gray-500 transition-colors disabled:opacity-50"
+          style={{ color: '#1a1a2e' }}
         >
           Mark Awaiting Pay
         </button>
@@ -102,7 +104,8 @@ export function TicketActions({ ticketId, currentStatus, pdfUrl }: TicketActions
         <button
           onClick={() => updateStatus('upload_to_dir')}
           disabled={loading}
-          className="px-2 py-1 text-xs font-medium text-orange-700 bg-orange-50 rounded hover:bg-orange-100 disabled:opacity-50"
+          className="px-3 py-1.5 text-xs font-medium border border-gray-300 hover:border-gray-500 transition-colors disabled:opacity-50"
+          style={{ color: '#1a1a2e' }}
         >
           Ready for DIR Upload
         </button>
@@ -119,7 +122,8 @@ export function TicketActions({ ticketId, currentStatus, pdfUrl }: TicketActions
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="px-2 py-1 text-xs font-medium text-orange-700 bg-orange-50 rounded hover:bg-orange-100 disabled:opacity-50"
+            className="px-3 py-1.5 text-xs font-medium text-white transition-colors disabled:opacity-50"
+            style={{ background: '#1a1a2e' }}
           >
             {uploading ? 'Uploading...' : 'Upload PDF'}
           </button>
@@ -132,7 +136,8 @@ export function TicketActions({ ticketId, currentStatus, pdfUrl }: TicketActions
               href={pdfUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100"
+              className="px-3 py-1.5 text-xs font-medium border border-gray-300 hover:border-gray-500 transition-colors"
+              style={{ color: '#1a1a2e' }}
             >
               View PDF
             </a>
@@ -140,14 +145,16 @@ export function TicketActions({ ticketId, currentStatus, pdfUrl }: TicketActions
           <button
             onClick={generateXml}
             disabled={loading}
-            className="px-2 py-1 text-xs font-medium text-green-700 bg-green-50 rounded hover:bg-green-100 disabled:opacity-50"
+            className="px-3 py-1.5 text-xs font-medium border border-gray-300 hover:border-gray-500 transition-colors disabled:opacity-50"
+            style={{ color: '#1a1a2e' }}
           >
             Generate XML
           </button>
           {xmlData && (
             <button
               onClick={downloadXml}
-              className="px-2 py-1 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700"
+              className="px-3 py-1.5 text-xs font-medium text-white transition-colors"
+              style={{ background: '#1a1a2e' }}
             >
               Download XML
             </button>
@@ -158,7 +165,8 @@ export function TicketActions({ ticketId, currentStatus, pdfUrl }: TicketActions
         <button
           onClick={() => updateStatus('pending')}
           disabled={loading}
-          className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-50 rounded hover:bg-gray-100 disabled:opacity-50"
+          className="px-3 py-1.5 text-xs font-medium border border-gray-200 hover:border-gray-400 transition-colors disabled:opacity-50"
+          style={{ color: '#6b7280' }}
         >
           Reset
         </button>
