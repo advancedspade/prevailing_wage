@@ -2,13 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { TicketActions } from './ticket-actions'
-
-const statusColors: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-800',
-  in_review: 'bg-blue-100 text-blue-800',
-  approved: 'bg-green-100 text-green-800',
-  rejected: 'bg-red-100 text-red-800',
-}
+import { STATUS_LABELS, STATUS_COLORS } from '@/lib/types'
 
 export default async function AdminTicketsPage() {
   const supabase = await createClient()
@@ -77,6 +71,9 @@ export default async function AdminTicketsPage() {
                     Hours
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Calculated Hours
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -102,13 +99,16 @@ export default async function AdminTicketsPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {ticket.hours_worked}
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
+                      {(Number(ticket.hours_worked) * 1.25).toFixed(2)}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[ticket.status]}`}>
-                        {ticket.status.replace('_', ' ')}
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${STATUS_COLORS[ticket.status as keyof typeof STATUS_COLORS] || 'bg-gray-100 text-gray-800'}`}>
+                        {STATUS_LABELS[ticket.status as keyof typeof STATUS_LABELS] || ticket.status}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <TicketActions ticketId={ticket.id} currentStatus={ticket.status} />
+                      <TicketActions ticketId={ticket.id} currentStatus={ticket.status} pdfUrl={ticket.pdf_url} />
                     </td>
                   </tr>
                 ))}
