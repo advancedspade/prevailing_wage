@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { getPayPeriod, getPayPeriodKey } from '@/lib/types'
+import { getPayPeriod, getPayPeriodKey, calculateAdjustedPay } from '@/lib/types'
 import type { Profile, Ticket, EmployeePeriodStatus } from '@/lib/types'
 import { PeriodsClient } from './periods-client'
 
@@ -9,7 +9,7 @@ interface EmployeeData {
   profile: Profile
   tickets: Ticket[]
   totalHours: number
-  totalAdjustedHours: number
+  totalAdjustedPay: number | null  // null means salary not set
   periodStatus: EmployeePeriodStatus
   employeePeriodId?: string
   hourlyWage?: number | null
@@ -105,11 +105,22 @@ export default async function PayPeriodsPage() {
       const statusKey = `${userId}-${periodData.year}-${periodData.month}-${periodData.period}`
       const periodStatusData = periodStatusMap.get(statusKey)
 
+      // Calculate total adjusted pay using the new formula
+      // If salary is not set, totalAdjustedPay will be null
+      const yearlySalary = empData.profile.salary
+      let totalAdjustedPay: number | null = null
+      if (yearlySalary) {
+        totalAdjustedPay = empData.tickets.reduce((sum, t) => {
+          const adjustedPay = calculateAdjustedPay(Number(t.hours_worked), yearlySalary)
+          return sum + (adjustedPay || 0)
+        }, 0)
+      }
+
       employees.push({
         profile: empData.profile,
         tickets: empData.tickets.sort((a, b) => new Date(a.date_worked).getTime() - new Date(b.date_worked).getTime()),
         totalHours,
-        totalAdjustedHours: totalHours * 1.25,
+        totalAdjustedPay,
         periodStatus: periodStatusData?.status || 'pending',
         employeePeriodId: periodStatusData?.id,
         hourlyWage: periodStatusData?.hourlyWage

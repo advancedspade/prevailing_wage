@@ -42,13 +42,14 @@ export function SalaryInput({ userId, currentSalary }: SalaryInputProps) {
       <input
         type="number"
         min="0"
-        step="0.01"
+        step="1000"
         value={salary}
         onChange={(e) => setSalary(e.target.value)}
-        placeholder="0.00"
-        className="w-24 px-2 py-1.5 text-sm border border-gray-300 focus:border-gray-900 focus:ring-0 transition-colors"
+        placeholder="50000"
+        className="w-28 px-2 py-1.5 text-sm border border-gray-300 focus:border-gray-900 focus:ring-0 transition-colors"
         style={{ background: '#fafafa' }}
       />
+      <span className="text-xs" style={{ color: '#6b7280' }}>/yr</span>
       <button
         onClick={handleSave}
         disabled={loading || !salary}

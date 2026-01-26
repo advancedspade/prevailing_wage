@@ -1,14 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { STATUS_LABELS, formatPayPeriodLabel, getPayPeriodKey } from '@/lib/types'
+import { STATUS_LABELS, formatPayPeriodLabel, getPayPeriodKey, calculateAdjustedPay } from '@/lib/types'
 import type { Profile, Ticket, EmployeePeriod, EmployeePeriodStatus } from '@/lib/types'
 
 interface EmployeeData {
   profile: Profile
   tickets: Ticket[]
   totalHours: number
-  totalAdjustedHours: number
+  totalAdjustedPay: number | null  // null means salary not set
   periodStatus: EmployeePeriodStatus
   employeePeriodId?: string
   hourlyWage?: number | null
@@ -30,9 +30,11 @@ interface PeriodsClientProps {
 export function PeriodsClient({ periods }: PeriodsClientProps) {
   const [expandedPeriods, setExpandedPeriods] = useState<Set<string>>(new Set([periods[0]?.key]))
   const [expandedEmployees, setExpandedEmployees] = useState<Set<string>>(new Set())
-  const [showWageModal, setShowWageModal] = useState<{ periodKey: string; userId: string; employeeName: string; totalAdjustedHours: number } | null>(null)
-  const [wage, setWage] = useState('')
+  const [showWageModal, setShowWageModal] = useState<{ periodKey: string; userId: string; employeeName: string; totalAdjustedPay: number | null; yearlySalary: number | null } | null>(null)
   const [loading, setLoading] = useState(false)
+
+  // Calculate hourly wage from yearly salary (2080 hours/year = 40 hrs/week × 52 weeks)
+  const hourlyWage = showWageModal?.yearlySalary ? showWageModal.yearlySalary / 2080 : 0
 
   const togglePeriod = (key: string) => {
     setExpandedPeriods(prev => {
@@ -63,16 +65,16 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
   }
 
   const handleGenerateXml = async () => {
-    if (!showWageModal || !wage) return
+    if (!showWageModal || !showWageModal.yearlySalary) return
     setLoading(true)
-    
+
     const res = await fetch('/api/generate-period-xml', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         periodKey: showWageModal.periodKey,
         userId: showWageModal.userId,
-        wage: parseFloat(wage)
+        yearlySalary: showWageModal.yearlySalary
       })
     })
 
@@ -86,14 +88,24 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
       a.click()
       URL.revokeObjectURL(url)
     }
-    
+
     setShowWageModal(null)
-    setWage('')
     setLoading(false)
     window.location.reload()
   }
 
-  const totalPay = showWageModal && wage ? (showWageModal.totalAdjustedHours * parseFloat(wage)).toFixed(2) : '0.00'
+  // Helper to format adjusted pay display
+  const formatAdjustedPay = (amount: number | null): string => {
+    if (amount === null) return 'Pending Salary'
+    return `$${amount.toFixed(2)}`
+  }
+
+  // Calculate period total adjusted pay (only for employees with salary set)
+  const getPeriodTotalAdjustedPay = (employees: EmployeeData[]): number | null => {
+    const hasMissingSalary = employees.some(e => e.totalAdjustedPay === null)
+    if (hasMissingSalary) return null
+    return employees.reduce((sum, e) => sum + (e.totalAdjustedPay || 0), 0)
+  }
 
   return (
     <div className="space-y-4">
@@ -121,10 +133,19 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
                 </span>
               </div>
               <div className="text-right">
-                <span className="text-lg font-medium" style={{ color: '#1a1a2e' }}>
-                  {period.employees.reduce((sum, e) => sum + e.totalAdjustedHours, 0).toFixed(2)}
-                </span>
-                <span className="text-sm ml-2" style={{ color: '#6b7280' }}>adjusted hrs</span>
+                {(() => {
+                  const total = getPeriodTotalAdjustedPay(period.employees)
+                  return total === null ? (
+                    <span className="text-sm" style={{ color: '#dc2626' }}>Pending Salary Info</span>
+                  ) : (
+                    <>
+                      <span className="text-lg font-medium" style={{ color: '#1a1a2e' }}>
+                        ${total.toFixed(2)}
+                      </span>
+                      <span className="text-sm ml-2" style={{ color: '#6b7280' }}>adjusted pay</span>
+                    </>
+                  )
+                })()}
               </div>
             </button>
 
@@ -153,8 +174,8 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
                           <span className="font-medium" style={{ color: isCompleted ? '#2e5a3a' : '#1a1a2e' }}>
                             {emp.profile.full_name || emp.profile.email}
                           </span>
-                          <span className="text-sm" style={{ color: isCompleted ? '#4a7c59' : '#6b7280' }}>
-                            {emp.totalAdjustedHours.toFixed(2)} adj hrs
+                          <span className="text-sm" style={{ color: emp.totalAdjustedPay === null ? '#dc2626' : (isCompleted ? '#4a7c59' : '#6b7280') }}>
+                            {emp.totalAdjustedPay === null ? 'Pending Salary' : `$${emp.totalAdjustedPay.toFixed(2)} adj pay`}
                           </span>
                           {isCompleted && (
                             <span className="text-sm font-medium" style={{ color: '#2e7d32' }}>
@@ -191,7 +212,8 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
                                   periodKey: period.key,
                                   userId: emp.profile.id,
                                   employeeName: emp.profile.full_name || emp.profile.email,
-                                  totalAdjustedHours: emp.totalAdjustedHours
+                                  totalAdjustedPay: emp.totalAdjustedPay,
+                                  yearlySalary: emp.profile.salary
                                 })}
                                 className="px-3 py-1.5 text-xs font-medium text-white transition-colors"
                                 style={{ background: '#1a1a2e' }}
@@ -213,23 +235,26 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
                                 <th className="pb-2 font-medium">DIR #</th>
                                 <th className="pb-2 font-medium">Project</th>
                                 <th className="pb-2 font-medium text-right">Hours</th>
-                                <th className="pb-2 font-medium text-right">Adjusted</th>
+                                <th className="pb-2 font-medium text-right">Adjusted Pay</th>
                               </tr>
                             </thead>
                             <tbody>
-                              {emp.tickets.map(ticket => (
-                                <tr key={ticket.id}>
-                                  <td className="py-1" style={{ color: '#1a1a2e' }}>
-                                    {new Date(ticket.date_worked).toLocaleDateString()}
-                                  </td>
-                                  <td className="py-1" style={{ color: '#1a1a2e' }}>{ticket.dir_number}</td>
-                                  <td className="py-1" style={{ color: '#6b7280' }}>{ticket.project_title}</td>
-                                  <td className="py-1 text-right" style={{ color: '#6b7280' }}>{ticket.hours_worked}</td>
-                                  <td className="py-1 text-right font-medium" style={{ color: '#1a1a2e' }}>
-                                    {(Number(ticket.hours_worked) * 1.25).toFixed(2)}
-                                  </td>
-                                </tr>
-                              ))}
+                              {emp.tickets.map(ticket => {
+                                const ticketAdjustedPay = calculateAdjustedPay(Number(ticket.hours_worked), emp.profile.salary)
+                                return (
+                                  <tr key={ticket.id}>
+                                    <td className="py-1" style={{ color: '#1a1a2e' }}>
+                                      {new Date(ticket.date_worked).toLocaleDateString()}
+                                    </td>
+                                    <td className="py-1" style={{ color: '#1a1a2e' }}>{ticket.dir_number}</td>
+                                    <td className="py-1" style={{ color: '#6b7280' }}>{ticket.project_title}</td>
+                                    <td className="py-1 text-right" style={{ color: '#6b7280' }}>{ticket.hours_worked}</td>
+                                    <td className="py-1 text-right font-medium" style={{ color: ticketAdjustedPay === null ? '#dc2626' : '#1a1a2e' }}>
+                                      {ticketAdjustedPay === null ? 'Pending' : `$${ticketAdjustedPay.toFixed(2)}`}
+                                    </td>
+                                  </tr>
+                                )
+                              })}
                             </tbody>
                           </table>
                         </div>
@@ -258,29 +283,27 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: '#1a1a2e' }}>Total Adjusted Hours</label>
-                <p className="text-sm" style={{ color: '#6b7280' }}>{showWageModal.totalAdjustedHours.toFixed(2)}</p>
+                <label className="block text-sm font-medium mb-1" style={{ color: '#1a1a2e' }}>Yearly Salary</label>
+                <p className="text-sm" style={{ color: showWageModal.yearlySalary ? '#6b7280' : '#dc2626' }}>
+                  {showWageModal.yearlySalary ? `$${showWageModal.yearlySalary.toLocaleString()}/yr` : 'Not set - please set salary in Manage Employees'}
+                </p>
               </div>
 
               <div>
-                <label htmlFor="wage" className="block text-sm font-medium mb-1" style={{ color: '#1a1a2e' }}>Hourly Wage ($)</label>
-                <input
-                  id="wage"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={wage}
-                  onChange={(e) => setWage(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full px-3 py-2 border border-gray-300 focus:border-gray-900 focus:ring-0 transition-colors"
-                  style={{ background: '#fafafa' }}
-                />
+                <label className="block text-sm font-medium mb-1" style={{ color: '#1a1a2e' }}>Hourly Rate (calculated)</label>
+                <p className="text-sm" style={{ color: '#6b7280' }}>
+                  {hourlyWage ? `$${hourlyWage.toFixed(2)}/hr` : '—'}
+                </p>
+                <p className="text-xs mt-1" style={{ color: '#9ca3af' }}>Yearly salary ÷ 2080 hrs/year</p>
               </div>
 
-              {wage && (
+              {showWageModal.totalAdjustedPay !== null && (
                 <div className="pt-4 border-t border-gray-200">
-                  <label className="block text-sm font-medium mb-1" style={{ color: '#1a1a2e' }}>Total Pay</label>
-                  <p className="text-2xl font-light" style={{ color: '#1a1a2e' }}>${totalPay}</p>
+                  <label className="block text-sm font-medium mb-1" style={{ color: '#1a1a2e' }}>Total Adjusted Pay</label>
+                  <p className="text-2xl font-light" style={{ color: '#1a1a2e' }}>${showWageModal.totalAdjustedPay.toFixed(2)}</p>
+                  <p className="text-xs mt-1" style={{ color: '#9ca3af' }}>
+                    Formula: (76.94 - (hourlyRate + 4.69 + (120 × hourlyRate / 2080))) × hours
+                  </p>
                 </div>
               )}
             </div>
@@ -288,14 +311,14 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
             <div className="flex gap-3">
               <button
                 onClick={handleGenerateXml}
-                disabled={loading || !wage}
+                disabled={loading || !showWageModal.yearlySalary}
                 className="flex-1 py-2 px-4 text-sm font-medium text-white transition-colors disabled:opacity-50"
                 style={{ background: '#1a1a2e' }}
               >
                 {loading ? 'Generating...' : 'Generate & Download'}
               </button>
               <button
-                onClick={() => { setShowWageModal(null); setWage(''); }}
+                onClick={() => setShowWageModal(null)}
                 className="py-2 px-4 text-sm font-medium border border-gray-300 hover:border-gray-500 transition-colors"
                 style={{ color: '#1a1a2e' }}
               >

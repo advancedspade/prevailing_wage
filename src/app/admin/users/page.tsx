@@ -62,7 +62,7 @@ export default async function AdminUsersPage() {
                     Joined
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: '#6b7280' }}>
-                    Hourly Rate
+                    Yearly Salary
                   </th>
                 </tr>
               </thead>
