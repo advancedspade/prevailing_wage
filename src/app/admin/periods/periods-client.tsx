@@ -133,59 +133,72 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
               <div className="border-t border-gray-200">
                 {period.employees.map(emp => {
                   const empKey = `${period.key}-${emp.profile.id}`
+                  const isCompleted = emp.periodStatus === 'ready_for_dir'
                   return (
                     <div key={empKey} className="border-b border-gray-100 last:border-b-0">
                       {/* Employee Row */}
-                      <div className="flex items-center justify-between p-4 pl-12 hover:bg-gray-50">
+                      <div
+                        className="flex items-center justify-between p-4 pl-12 transition-colors"
+                        style={{
+                          background: isCompleted ? '#e8f5e9' : undefined,
+                        }}
+                      >
                         <button
                           onClick={() => toggleEmployee(empKey)}
-                          className="flex items-center gap-3 text-left flex-1"
+                          className="flex items-center gap-3 text-left flex-1 hover:opacity-70"
                         >
-                          <span style={{ color: '#6b7280' }}>
+                          <span style={{ color: isCompleted ? '#4a7c59' : '#6b7280' }}>
                             {expandedEmployees.has(empKey) ? '▼' : '▶'}
                           </span>
-                          <span className="font-medium" style={{ color: '#1a1a2e' }}>
+                          <span className="font-medium" style={{ color: isCompleted ? '#2e5a3a' : '#1a1a2e' }}>
                             {emp.profile.full_name || emp.profile.email}
                           </span>
-                          <span className="text-sm" style={{ color: '#6b7280' }}>
+                          <span className="text-sm" style={{ color: isCompleted ? '#4a7c59' : '#6b7280' }}>
                             {emp.totalAdjustedHours.toFixed(2)} adj hrs
                           </span>
+                          {isCompleted && (
+                            <span className="text-sm font-medium" style={{ color: '#2e7d32' }}>
+                              ✓ Completed
+                            </span>
+                          )}
                         </button>
 
                         {/* Status + Actions */}
                         <div className="flex items-center gap-3">
-                          <span className="px-2 py-1 text-xs font-medium border" style={{ color: '#1a1a2e', borderColor: '#d1d1d1' }}>
-                            {STATUS_LABELS[emp.periodStatus]}
-                          </span>
-
                           {emp.periodStatus === 'pending' && (
-                            <button
-                              onClick={() => updateStatus(period.key, emp.profile.id, 'awaiting_pay')}
-                              disabled={loading}
-                              className="px-3 py-1.5 text-xs font-medium border border-gray-300 hover:border-gray-500 transition-colors disabled:opacity-50"
-                              style={{ color: '#1a1a2e' }}
-                            >
-                              Mark Awaiting Pay
-                            </button>
+                            <>
+                              <span className="px-2 py-1 text-xs font-medium border" style={{ color: '#1a1a2e', borderColor: '#d1d1d1' }}>
+                                {STATUS_LABELS[emp.periodStatus]}
+                              </span>
+                              <button
+                                onClick={() => updateStatus(period.key, emp.profile.id, 'awaiting_pay')}
+                                disabled={loading}
+                                className="px-3 py-1.5 text-xs font-medium border border-gray-300 hover:border-gray-500 transition-colors disabled:opacity-50"
+                                style={{ color: '#1a1a2e' }}
+                              >
+                                Mark Awaiting Pay
+                              </button>
+                            </>
                           )}
 
                           {emp.periodStatus === 'awaiting_pay' && (
-                            <button
-                              onClick={() => setShowWageModal({
-                                periodKey: period.key,
-                                userId: emp.profile.id,
-                                employeeName: emp.profile.full_name || emp.profile.email,
-                                totalAdjustedHours: emp.totalAdjustedHours
-                              })}
-                              className="px-3 py-1.5 text-xs font-medium text-white transition-colors"
-                              style={{ background: '#1a1a2e' }}
-                            >
-                              Ready for DIR
-                            </button>
-                          )}
-
-                          {emp.periodStatus === 'ready_for_dir' && (
-                            <span className="text-xs" style={{ color: '#6b7280' }}>✓ Completed</span>
+                            <>
+                              <span className="px-2 py-1 text-xs font-medium border" style={{ color: '#1a1a2e', borderColor: '#d1d1d1' }}>
+                                {STATUS_LABELS[emp.periodStatus]}
+                              </span>
+                              <button
+                                onClick={() => setShowWageModal({
+                                  periodKey: period.key,
+                                  userId: emp.profile.id,
+                                  employeeName: emp.profile.full_name || emp.profile.email,
+                                  totalAdjustedHours: emp.totalAdjustedHours
+                                })}
+                                className="px-3 py-1.5 text-xs font-medium text-white transition-colors"
+                                style={{ background: '#1a1a2e' }}
+                              >
+                                Ready for DIR
+                              </button>
+                            </>
                           )}
                         </div>
                       </div>
