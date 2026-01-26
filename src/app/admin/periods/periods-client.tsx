@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { STATUS_LABELS, formatPayPeriodLabel, getPayPeriodKey, calculateAdjustedPay } from '@/lib/types'
+import { STATUS_LABELS, formatPayPeriodLabel, getPayPeriodKey, calculateAdjustedPay, calculateCACCost } from '@/lib/types'
 import type { Profile, Ticket, EmployeePeriod, EmployeePeriodStatus } from '@/lib/types'
 
 interface EmployeeData {
@@ -107,6 +107,11 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
     return employees.reduce((sum, e) => sum + (e.totalAdjustedPay || 0), 0)
   }
 
+  // Calculate period total CAC cost (sum of all employees' hours × $0.80)
+  const getPeriodTotalCAC = (employees: EmployeeData[]): number => {
+    return employees.reduce((sum, e) => sum + calculateCACCost(e.totalHours), 0)
+  }
+
   return (
     <div className="space-y-4">
       {periods.length === 0 ? (
@@ -132,20 +137,28 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
                   {period.employees.length} employee{period.employees.length !== 1 ? 's' : ''}
                 </span>
               </div>
-              <div className="text-right">
-                {(() => {
-                  const total = getPeriodTotalAdjustedPay(period.employees)
-                  return total === null ? (
-                    <span className="text-sm" style={{ color: '#dc2626' }}>Pending Salary Info</span>
-                  ) : (
-                    <>
-                      <span className="text-lg font-medium" style={{ color: '#1a1a2e' }}>
-                        ${total.toFixed(2)}
-                      </span>
-                      <span className="text-sm ml-2" style={{ color: '#6b7280' }}>adjusted pay</span>
-                    </>
-                  )
-                })()}
+              <div className="text-right flex items-center gap-6">
+                <div>
+                  <span className="text-sm font-medium" style={{ color: '#1a1a2e' }}>
+                    ${getPeriodTotalCAC(period.employees).toFixed(2)}
+                  </span>
+                  <span className="text-sm ml-1" style={{ color: '#6b7280' }}>CAC</span>
+                </div>
+                <div>
+                  {(() => {
+                    const total = getPeriodTotalAdjustedPay(period.employees)
+                    return total === null ? (
+                      <span className="text-sm" style={{ color: '#dc2626' }}>Pending Salary Info</span>
+                    ) : (
+                      <>
+                        <span className="text-lg font-medium" style={{ color: '#1a1a2e' }}>
+                          ${total.toFixed(2)}
+                        </span>
+                        <span className="text-sm ml-2" style={{ color: '#6b7280' }}>adjusted pay</span>
+                      </>
+                    )
+                  })()}
+                </div>
               </div>
             </button>
 
@@ -176,6 +189,9 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
                           </span>
                           <span className="text-sm" style={{ color: emp.totalAdjustedPay === null ? '#dc2626' : (isCompleted ? '#4a7c59' : '#6b7280') }}>
                             {emp.totalAdjustedPay === null ? 'Pending Salary' : `$${emp.totalAdjustedPay.toFixed(2)} adj pay`}
+                          </span>
+                          <span className="text-sm" style={{ color: isCompleted ? '#4a7c59' : '#6b7280' }}>
+                            ${calculateCACCost(emp.totalHours).toFixed(2)} CAC
                           </span>
                           {isCompleted && (
                             <span className="text-sm font-medium" style={{ color: '#2e7d32' }}>

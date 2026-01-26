@@ -116,7 +116,8 @@ export const PREVAILING_WAGE_CONSTANTS = {
   BASE_RATE: 76.94,
   FIXED_DEDUCTION: 4.69,
   HOURS_PER_YEAR: 2080,
-  ADJUSTMENT_HOURS: 120
+  ADJUSTMENT_HOURS: 120,
+  CAC_RATE: 0.80  // Remit to CAC cost per hour
 }
 
 /**
@@ -151,3 +152,10 @@ export function calculateAdjustedPay(hoursWorked: number, yearlySalary: number |
   return rate * hoursWorked
 }
 
+/**
+ * Calculate the CAC (Remit to CAC) cost
+ * Formula: hoursWorked × $0.80
+ */
+export function calculateCACCost(hoursWorked: number): number {
+  return hoursWorked * PREVAILING_WAGE_CONSTANTS.CAC_RATE
+}
