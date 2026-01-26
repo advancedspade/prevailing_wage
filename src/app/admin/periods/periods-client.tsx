@@ -168,13 +168,14 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
                 {period.employees.map(emp => {
                   const empKey = `${period.key}-${emp.profile.id}`
                   const isCompleted = emp.periodStatus === 'ready_for_dir'
+                  const isAwaitingPay = emp.periodStatus === 'awaiting_pay'
                   return (
                     <div key={empKey} className="border-b border-gray-100 last:border-b-0">
                       {/* Employee Row */}
                       <div
                         className="flex items-center justify-between p-4 pl-12 transition-colors"
                         style={{
-                          background: isCompleted ? '#e8f5e9' : undefined,
+                          background: isCompleted ? '#e8f5e9' : isAwaitingPay ? '#e0f2fe' : undefined,
                         }}
                       >
                         <button
