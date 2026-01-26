@@ -204,14 +204,14 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
                         <div className="flex items-center gap-3">
                           {emp.periodStatus === 'pending' && (
                             <>
-                              <span className="px-2 py-1 text-xs font-medium border" style={{ color: '#1a1a2e', borderColor: '#d1d1d1' }}>
-                                {STATUS_LABELS[emp.periodStatus]}
+                              <span className="text-xs" style={{ color: '#6b7280' }}>
+                                Current: {STATUS_LABELS[emp.periodStatus]}
                               </span>
                               <button
                                 onClick={() => updateStatus(period.key, emp.profile.id, 'awaiting_pay')}
                                 disabled={loading}
-                                className="px-3 py-1.5 text-xs font-medium border border-gray-300 hover:border-gray-500 transition-colors disabled:opacity-50"
-                                style={{ color: '#1a1a2e' }}
+                                className="px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 hover:opacity-80"
+                                style={{ background: '#e0f2fe', color: '#0369a1' }}
                               >
                                 Mark Awaiting Pay
                               </button>
@@ -220,8 +220,8 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
 
                           {emp.periodStatus === 'awaiting_pay' && (
                             <>
-                              <span className="px-2 py-1 text-xs font-medium border" style={{ color: '#1a1a2e', borderColor: '#d1d1d1' }}>
-                                {STATUS_LABELS[emp.periodStatus]}
+                              <span className="text-xs" style={{ color: '#6b7280' }}>
+                                Current: {STATUS_LABELS[emp.periodStatus]}
                               </span>
                               <button
                                 onClick={() => setShowWageModal({
@@ -231,8 +231,8 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
                                   totalAdjustedPay: emp.totalAdjustedPay,
                                   yearlySalary: emp.profile.salary
                                 })}
-                                className="px-3 py-1.5 text-xs font-medium text-white transition-colors"
-                                style={{ background: '#1a1a2e' }}
+                                className="px-3 py-1.5 text-xs font-medium transition-colors hover:opacity-80"
+                                style={{ background: '#e0f2fe', color: '#0369a1' }}
                               >
                                 Ready for DIR
                               </button>
