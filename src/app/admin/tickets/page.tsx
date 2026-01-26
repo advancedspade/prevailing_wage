@@ -1,14 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { TicketActions } from './ticket-actions'
-import { STATUS_LABELS } from '@/lib/types'
+import { STATUS_LABELS, getPayPeriod } from '@/lib/types'
+import type { EmployeePeriodStatus } from '@/lib/types'
 
 export default async function AdminTicketsPage() {
   const supabase = await createClient()
-  
+
   const { data: { user } } = await supabase.auth.getUser()
-  
+
   if (!user) {
     redirect('/login')
   }
@@ -32,6 +32,26 @@ export default async function AdminTicketsPage() {
       profile:profiles(full_name, email)
     `)
     .order('created_at', { ascending: false })
+
+  // Get all employee_periods to look up status
+  const { data: employeePeriods } = await supabase
+    .from('employee_periods')
+    .select('*')
+
+  // Build lookup map for employee period statuses
+  const periodStatusMap = new Map<string, EmployeePeriodStatus>()
+  employeePeriods?.forEach(ep => {
+    const key = `${ep.user_id}-${ep.year}-${ep.month}-${ep.period}`
+    periodStatusMap.set(key, ep.status)
+  })
+
+  // Helper to get status for a ticket based on its employee's period
+  const getTicketPeriodStatus = (ticket: { user_id: string; date_worked: string }): EmployeePeriodStatus => {
+    const date = new Date(ticket.date_worked)
+    const payPeriod = getPayPeriod(date)
+    const key = `${ticket.user_id}-${payPeriod.year}-${payPeriod.month}-${payPeriod.period}`
+    return periodStatusMap.get(key) || 'pending'
+  }
 
   return (
     <div className="min-h-screen" style={{ background: '#e8e8e8' }}>
@@ -71,47 +91,44 @@ export default async function AdminTicketsPage() {
                     Hours
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: '#6b7280' }}>
-                    Calculated
+                    Adjusted
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: '#6b7280' }}>
                     Status
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: '#6b7280' }}>
-                    Actions
-                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {tickets.map((ticket) => (
-                  <tr key={ticket.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: '#1a1a2e' }}>
-                      {ticket.profile?.full_name || ticket.profile?.email || 'Unknown'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" style={{ color: '#1a1a2e' }}>
-                      {ticket.dir_number}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: '#6b7280' }}>
-                      {ticket.project_title}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: '#6b7280' }}>
-                      {new Date(ticket.date_worked).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: '#6b7280' }}>
-                      {ticket.hours_worked}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" style={{ color: '#1a1a2e' }}>
-                      {(Number(ticket.hours_worked) * 1.25).toFixed(2)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 py-1 text-xs font-medium border" style={{ color: '#1a1a2e', borderColor: '#d1d1d1' }}>
-                        {STATUS_LABELS[ticket.status as keyof typeof STATUS_LABELS] || ticket.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <TicketActions ticketId={ticket.id} currentStatus={ticket.status} />
-                    </td>
-                  </tr>
-                ))}
+                {tickets.map((ticket) => {
+                  const periodStatus = getTicketPeriodStatus(ticket)
+                  return (
+                    <tr key={ticket.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: '#1a1a2e' }}>
+                        {ticket.profile?.full_name || ticket.profile?.email || 'Unknown'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" style={{ color: '#1a1a2e' }}>
+                        {ticket.dir_number}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: '#6b7280' }}>
+                        {ticket.project_title}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: '#6b7280' }}>
+                        {new Date(ticket.date_worked).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: '#6b7280' }}>
+                        {ticket.hours_worked}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" style={{ color: '#1a1a2e' }}>
+                        {(Number(ticket.hours_worked) * 1.25).toFixed(2)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-2 py-1 text-xs font-medium border" style={{ color: '#1a1a2e', borderColor: '#d1d1d1' }}>
+                          {STATUS_LABELS[periodStatus]}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           ) : (
