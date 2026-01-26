@@ -175,7 +175,7 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
                       <div
                         className="flex items-center justify-between p-4 pl-12 transition-colors"
                         style={{
-                          background: isCompleted ? '#e8f5e9' : isAwaitingPay ? '#e0f2fe' : undefined,
+                          background: isCompleted ? '#e8f5e9' : isAwaitingPay ? '#fef8e0ff' : undefined,
                         }}
                       >
                         <button
