@@ -22,7 +22,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { periodKey, userId, yearlySalary } = await request.json()
+  const {
+    periodKey,
+    userId,
+    yearlySalary,
+    checkNumber,
+    federalTax,
+    fica,
+    stateTax,
+    sdi,
+    savings,
+    total,
+    grossWages
+  } = await request.json()
 
   // Parse period
   const { year, month, period } = parsePayPeriodKey(periodKey)
@@ -76,6 +88,16 @@ export async function POST(request: NextRequest) {
     <YearlySalary>${yearlySalary.toFixed(2)}</YearlySalary>
     <HourlyRate>${hourlyRate.toFixed(2)}</HourlyRate>
   </Employee>
+  <CheckInformation>
+    <CheckNumber>${checkNumber || ''}</CheckNumber>
+    <GrossWages>${grossWages.toFixed(2)}</GrossWages>
+    <FederalTax>${federalTax.toFixed(2)}</FederalTax>
+    <FICA>${fica.toFixed(2)}</FICA>
+    <StateTax>${stateTax.toFixed(2)}</StateTax>
+    <SDI>${sdi.toFixed(2)}</SDI>
+    <Savings>${savings.toFixed(2)}</Savings>
+    <Total>${total.toFixed(2)}</Total>
+  </CheckInformation>
   <WageCalculation>
     <BaseRate>${PREVAILING_WAGE_CONSTANTS.BASE_RATE.toFixed(2)}</BaseRate>
     <FixedDeduction>${PREVAILING_WAGE_CONSTANTS.FIXED_DEDUCTION.toFixed(2)}</FixedDeduction>

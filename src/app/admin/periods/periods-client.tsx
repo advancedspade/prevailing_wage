@@ -33,6 +33,28 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
   const [showWageModal, setShowWageModal] = useState<{ periodKey: string; userId: string; employeeName: string; totalAdjustedPay: number | null; yearlySalary: number | null } | null>(null)
   const [loading, setLoading] = useState(false)
 
+  // Check/payroll input fields
+  const [checkNumber, setCheckNumber] = useState('')
+  const [federalTax, setFederalTax] = useState('')
+  const [fica, setFica] = useState('')
+  const [stateTax, setStateTax] = useState('')
+  const [sdi, setSdi] = useState('')
+  const [savings, setSavings] = useState('')
+  const [total, setTotal] = useState('')
+  const [grossWages, setGrossWages] = useState('')
+
+  // Reset form fields when modal closes
+  const resetFormFields = () => {
+    setCheckNumber('')
+    setFederalTax('')
+    setFica('')
+    setStateTax('')
+    setSdi('')
+    setSavings('')
+    setTotal('')
+    setGrossWages('')
+  }
+
   // Calculate hourly wage from yearly salary (2080 hours/year = 40 hrs/week × 52 weeks)
   const hourlyWage = showWageModal?.yearlySalary ? showWageModal.yearlySalary / 2080 : 0
 
@@ -74,7 +96,15 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
       body: JSON.stringify({
         periodKey: showWageModal.periodKey,
         userId: showWageModal.userId,
-        yearlySalary: showWageModal.yearlySalary
+        yearlySalary: showWageModal.yearlySalary,
+        checkNumber,
+        federalTax: parseFloat(federalTax) || 0,
+        fica: parseFloat(fica) || 0,
+        stateTax: parseFloat(stateTax) || 0,
+        sdi: parseFloat(sdi) || 0,
+        savings: parseFloat(savings) || 0,
+        total: parseFloat(total) || 0,
+        grossWages: parseFloat(grossWages) || 0
       })
     })
 
@@ -90,6 +120,7 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
     }
 
     setShowWageModal(null)
+    resetFormFields()
     setLoading(false)
     window.location.reload()
   }
@@ -288,7 +319,7 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
       {/* Wage Entry Modal */}
       {showWageModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-8 max-w-md w-full mx-4 border border-gray-200">
+          <div className="bg-white p-8 max-w-lg w-full mx-4 border border-gray-200 max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-light mb-6" style={{ color: '#1a1a2e' }}>
               Generate DIR XML
             </h3>
@@ -299,30 +330,132 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
                 <p className="text-sm" style={{ color: '#6b7280' }}>{showWageModal.employeeName}</p>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: '#1a1a2e' }}>Yearly Salary</label>
-                <p className="text-sm" style={{ color: showWageModal.yearlySalary ? '#6b7280' : '#dc2626' }}>
-                  {showWageModal.yearlySalary ? `$${showWageModal.yearlySalary.toLocaleString()}/yr` : 'Not set - please set salary in Manage Employees'}
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: '#1a1a2e' }}>Hourly Rate (calculated)</label>
-                <p className="text-sm" style={{ color: '#6b7280' }}>
-                  {hourlyWage ? `$${hourlyWage.toFixed(2)}/hr` : '—'}
-                </p>
-                <p className="text-xs mt-1" style={{ color: '#9ca3af' }}>Yearly salary ÷ 2080 hrs/year</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1" style={{ color: '#1a1a2e' }}>Yearly Salary</label>
+                  <p className="text-sm" style={{ color: showWageModal.yearlySalary ? '#6b7280' : '#dc2626' }}>
+                    {showWageModal.yearlySalary ? `$${showWageModal.yearlySalary.toLocaleString()}/yr` : 'Not set'}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1" style={{ color: '#1a1a2e' }}>Hourly Rate</label>
+                  <p className="text-sm" style={{ color: '#6b7280' }}>
+                    {hourlyWage ? `$${hourlyWage.toFixed(2)}/hr` : '—'}
+                  </p>
+                </div>
               </div>
 
               {showWageModal.totalAdjustedPay !== null && (
                 <div className="pt-4 border-t border-gray-200">
                   <label className="block text-sm font-medium mb-1" style={{ color: '#1a1a2e' }}>Total Adjusted Pay</label>
                   <p className="text-2xl font-light" style={{ color: '#1a1a2e' }}>${showWageModal.totalAdjustedPay.toFixed(2)}</p>
-                  <p className="text-xs mt-1" style={{ color: '#9ca3af' }}>
-                    Formula: (76.94 - (hourlyRate + 4.69 + (120 × hourlyRate / 2080))) × hours
-                  </p>
                 </div>
               )}
+
+              {/* Check/Payroll Information */}
+              <div className="pt-4 border-t border-gray-200">
+                <h4 className="text-sm font-medium mb-3" style={{ color: '#1a1a2e' }}>Check Information</h4>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium mb-1" style={{ color: '#6b7280' }}>Check Number</label>
+                    <input
+                      type="text"
+                      value={checkNumber}
+                      onChange={(e) => setCheckNumber(e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:border-gray-500"
+                      placeholder="Enter check number"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: '#6b7280' }}>Gross Wages</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={grossWages}
+                        onChange={(e) => setGrossWages(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:border-gray-500"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: '#6b7280' }}>Federal Tax</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={federalTax}
+                        onChange={(e) => setFederalTax(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:border-gray-500"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: '#6b7280' }}>FICA (Social Security)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={fica}
+                        onChange={(e) => setFica(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:border-gray-500"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: '#6b7280' }}>State Tax</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={stateTax}
+                        onChange={(e) => setStateTax(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:border-gray-500"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: '#6b7280' }}>SDI</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={sdi}
+                        onChange={(e) => setSdi(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:border-gray-500"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: '#6b7280' }}>Savings</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={savings}
+                        onChange={(e) => setSavings(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:border-gray-500"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium mb-1" style={{ color: '#6b7280' }}>Total (Net Pay)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={total}
+                      onChange={(e) => setTotal(e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:border-gray-500"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="flex gap-3">
@@ -335,7 +468,7 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
                 {loading ? 'Generating...' : 'Generate & Download'}
               </button>
               <button
-                onClick={() => setShowWageModal(null)}
+                onClick={() => { setShowWageModal(null); resetFormFields(); }}
                 className="py-2 px-4 text-sm font-medium border border-gray-300 hover:border-gray-500 transition-colors"
                 style={{ color: '#1a1a2e' }}
               >
