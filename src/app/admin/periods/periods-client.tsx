@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { STATUS_LABELS, formatPayPeriodLabel, getPayPeriodKey, calculateAdjustedPay, calculateCACCost } from '@/lib/types'
-import type { Profile, Ticket, EmployeePeriod, EmployeePeriodStatus } from '@/lib/types'
+import { STATUS_LABELS, calculateAdjustedPay, calculateCACCost } from '@/lib/types'
+import type { Profile, Ticket, EmployeePeriodStatus } from '@/lib/types'
 
 interface EmployeeData {
   profile: Profile
@@ -123,12 +123,6 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
     resetFormFields()
     setLoading(false)
     window.location.reload()
-  }
-
-  // Helper to format adjusted pay display
-  const formatAdjustedPay = (amount: number | null): string => {
-    if (amount === null) return 'Pending Salary'
-    return `$${amount.toFixed(2)}`
   }
 
   // Calculate period total adjusted pay (only for employees with salary set)
