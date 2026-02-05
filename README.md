@@ -1,4 +1,4 @@
-# Advanced Spade
+# Koda (ASC Prevailing Wage Tracker)
 
 Prevailing wage tracking app for managing employee work tickets and DIR submissions.
 

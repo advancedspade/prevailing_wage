@@ -1,4 +1,4 @@
-# Advanced Spade - Design Document
+# Koda (ASC Prevailing Wage Tracker) - Design Document
 
 ## What This App Does
 

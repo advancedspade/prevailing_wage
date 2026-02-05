@@ -1,4 +1,4 @@
-# Advanced Spade - Architecture & GCP Migration Guide
+# Koda (ASC Prevailing Wage Tracker) - Architecture & GCP Migration Guide
 
 ## Overview
 
@@ -90,5 +90,5 @@ FIREBASE_PRIVATE_KEY=
 - `supabase-fix-rls.sql` - RLS policies & security definer function
 - `supabase-employee-periods.sql` - Employee periods table
 
-These can be run directly on Cloud SQL PostgreSQL (remove RLS policies if not using Supabase).
+These can be run directly on Cloud SQL PostgreSQL.
 
