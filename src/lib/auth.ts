@@ -3,6 +3,7 @@ import GoogleProvider from 'next-auth/providers/google'
 import { query, queryOne } from '@/lib/db'
 
 export const authOptions: NextAuthOptions = {
+  trustHost: true, // required when behind Cloud Run / reverse proxies
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
