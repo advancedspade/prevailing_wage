@@ -1,22 +1,13 @@
-import { createClient } from '@/lib/supabase/server'
+import { getAuthUserAndProfile } from '@/lib/auth-db'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 
 export default async function DashboardPage() {
-  const supabase = await createClient()
-  
-  const { data: { user } } = await supabase.auth.getUser()
-  
+  const { user, profile } = await getAuthUserAndProfile()
+
   if (!user) {
     redirect('/login')
   }
-
-  // Get user profile to check role
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
 
   const isAdmin = profile?.role === 'admin'
 
@@ -37,15 +28,13 @@ export default async function DashboardPage() {
                   {isAdmin ? 'Admin' : 'Employee'}
                 </span>
               </span>
-              <form action="/auth/signout" method="post">
-                <button
-                  type="submit"
-                  className="text-sm hover:underline"
-                  style={{ color: '#1a1a2e' }}
-                >
-                  Sign out
-                </button>
-              </form>
+              <a
+                href="/api/auth/signout?callbackUrl=/login"
+                className="text-sm hover:underline"
+                style={{ color: '#1a1a2e' }}
+              >
+                Sign out
+              </a>
             </div>
           </div>
         </div>

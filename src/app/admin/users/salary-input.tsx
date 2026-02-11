@@ -1,6 +1,5 @@
 'use client'
 
-import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
@@ -14,24 +13,24 @@ export function SalaryInput({ userId, currentSalary }: SalaryInputProps) {
   const [loading, setLoading] = useState(false)
   const [saved, setSaved] = useState(false)
   const router = useRouter()
-  const supabase = createClient()
 
   const handleSave = async () => {
     if (!salary) return
-    
+
     setLoading(true)
     setSaved(false)
-    
-    const { error } = await supabase
-      .from('profiles')
-      .update({ salary: parseFloat(salary) })
-      .eq('id', userId)
 
-    if (!error) {
+    const res = await fetch(`/api/profiles/${userId}/salary`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ salary: parseFloat(salary) }),
+    })
+
+    if (res.ok) {
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     }
-    
+
     router.refresh()
     setLoading(false)
   }

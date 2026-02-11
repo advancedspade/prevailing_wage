@@ -1,34 +1,23 @@
-import { createClient } from '@/lib/supabase/server'
+import { getAuthUserAndProfile } from '@/lib/auth-db'
+import { query } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { SalaryInput } from './salary-input'
 
 export default async function AdminUsersPage() {
-  const supabase = await createClient()
-  
-  const { data: { user } } = await supabase.auth.getUser()
-  
+  const { user, profile } = await getAuthUserAndProfile()
+
   if (!user) {
     redirect('/login')
   }
-
-  // Check if user is admin
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
 
   if (profile?.role !== 'admin') {
     redirect('/dashboard')
   }
 
-  // Get all users (non-admin)
-  const { data: users } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('role', 'user')
-    .order('created_at', { ascending: false })
+  const { rows: users } = await query(
+    `SELECT * FROM public.profiles WHERE role = 'user' ORDER BY created_at DESC`
+  )
 
   return (
     <div className="min-h-screen" style={{ background: '#e8e8e8' }}>

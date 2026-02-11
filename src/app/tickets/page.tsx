@@ -1,22 +1,20 @@
-import { createClient } from '@/lib/supabase/server'
+import { getAuthUserAndProfile } from '@/lib/auth-db'
+import { query } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { STATUS_LABELS } from '@/lib/types'
 
 export default async function TicketsPage() {
-  const supabase = await createClient()
-  
-  const { data: { user } } = await supabase.auth.getUser()
-  
+  const { user } = await getAuthUserAndProfile()
+
   if (!user) {
     redirect('/login')
   }
 
-  const { data: tickets } = await supabase
-    .from('tickets')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
+  const { rows: tickets } = await query(
+    `SELECT * FROM public.tickets WHERE user_id = $1 ORDER BY created_at DESC`,
+    [user.id]
+  )
 
   return (
     <div className="min-h-screen" style={{ background: '#e8e8e8' }}>
