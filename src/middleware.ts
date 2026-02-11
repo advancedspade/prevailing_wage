@@ -2,10 +2,17 @@ import { getToken } from 'next-auth/jwt'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
+  const secret = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET
   const token = await getToken({
     req: request,
-    secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
+    secret,
   })
+
+  // Debug: remove after fixing staging redirect (log only on protected/auth routes)
+  const path = request.nextUrl.pathname
+  if (path.startsWith('/dashboard') || path.startsWith('/login')) {
+    console.log('[Auth] middleware', { path, hasToken: !!token, hasProfileId: !!token?.profileId, hasSecret: !!secret })
+  }
 
   const protectedRoutes = ['/dashboard', '/admin', '/tickets']
   const isProtectedRoute = protectedRoutes.some((route) =>

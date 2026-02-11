@@ -30,7 +30,10 @@ export const authOptions: NextAuthOptions = {
             )
             profile = rows[0] ?? null
           }
-          if (profile) token.profileId = profile.id
+          if (profile) {
+            token.profileId = profile.id
+            console.log('[Auth] JWT callback: profileId set for', token.sub)
+          }
         } catch (e) {
           console.error(
             '[Auth] JWT callback failed (profile lookup/insert). Check DATABASE_URL and that Postgres is running.',
