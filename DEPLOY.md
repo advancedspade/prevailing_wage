@@ -160,6 +160,49 @@ gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
 
 **First deploy:** The first push to `staging` (or `production`/`main`) will create the Cloud Run service if it doesn’t exist. Ensure the Artifact Registry repo exists (e.g. create `cloud-run-source-deploy` in the Console or run `gcloud artifacts repositories create cloud-run-source-deploy --repository-format=docker --location=us-central1` once). Then set **env vars** for each service in Cloud Run (staging vs production URLs and DBs).
 
+**Troubleshooting: "The given credential is rejected by the attribute condition"**
+
+The WIF provider's **attribute condition** must match the repo running the workflow. The condition checks `assertion.repository_owner` (the GitHub user or org that owns the repo). If the repo is under a **user** (e.g. `github.com/sam/prevailing_wage`), the owner is your GitHub **username** (e.g. `sam`). If under an **organization**, the owner is the **org slug** (e.g. `myorg`). Update the provider (replace `YOUR_PROJECT_ID`, pool/provider names, and `ACTUAL_OWNER`):
+
+```bash
+gcloud iam workload-identity-pools providers update-oidc github-provider \
+  --project=YOUR_PROJECT_ID \
+  --location=global \
+  --workload-identity-pool=github-pool \
+  --attribute-condition="assertion.repository_owner == 'ACTUAL_OWNER'"
+```
+
+Or restrict to the exact repo (use lowercase `owner/repo` as GitHub sends it):
+
+```bash
+gcloud iam workload-identity-pools providers update-oidc github-provider \
+  --project=YOUR_PROJECT_ID \
+  --location=global \
+  --workload-identity-pool=github-pool \
+  --attribute-condition="assertion.repository == 'owner/repo'"
+```
+
+Ensure the **service account** has a binding for this repo, e.g. `principalSet://iam.googleapis.com/POOL_ID/attribute.repository/owner/repo`. If you used a different pool or attribute when creating the binding, fix it to match the repo (e.g. `sam/prevailing_wage`).
+
+**Troubleshooting: "Permission 'iam.serviceAccounts.getAccessToken' denied"**
+
+The workflow identity must be allowed to **impersonate** the service account (get access tokens). Grant `roles/iam.workloadIdentityUser` on the service account to the WIF principal for your repo. Replace `YOUR_PROJECT_ID` and the pool/provider names if different; for repo `advancedspade/prevailing_wage`:
+
+```bash
+export PROJECT_ID=YOUR_PROJECT_ID
+export SA_EMAIL="github-actions-sa@${PROJECT_ID}.iam.gserviceaccount.com"
+
+# POOL_ID is the pool's full name (projects/NUMBER/locations/global/workloadIdentityPools/POOL_NAME)
+POOL_ID=$(gcloud iam workload-identity-pools describe github-pool --project="${PROJECT_ID}" --location=global --format="value(name)")
+
+gcloud iam service-accounts add-iam-policy-binding "${SA_EMAIL}" \
+  --project="${PROJECT_ID}" \
+  --role="roles/iam.workloadIdentityUser" \
+  --member="principalSet://iam.googleapis.com/${POOL_ID}/attribute.repository/advancedspade/prevailing_wage"
+```
+
+Re-run the workflow after adding the binding.
+
 **Behavior:**
 
 - Push to **`staging`** → workflow `Deploy to Staging` runs → deploys to **prevailing-wage-staging**.

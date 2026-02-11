@@ -3,7 +3,7 @@ import { query } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getPayPeriod, getPayPeriodKey, calculateAdjustedPay } from '@/lib/types'
-import type { Profile, Ticket, EmployeePeriodStatus } from '@/lib/types'
+import type { Profile, Ticket, EmployeePeriodStatus, EmployeePeriod } from '@/lib/types'
 import { PeriodsClient } from './periods-client'
 
 interface EmployeeData {
@@ -84,7 +84,7 @@ export default async function PayPeriodsPage() {
     },
   }))
 
-  const { rows: employeePeriods } = await query(
+  const { rows: employeePeriods } = await query<EmployeePeriod>(
     'SELECT * FROM public.employee_periods'
   )
 
