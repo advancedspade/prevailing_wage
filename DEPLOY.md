@@ -152,13 +152,19 @@ gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
 
 **Add GitHub secrets** (repo → Settings → Secrets and variables → Actions):
 
-| Secret | Value |
-|--------|--------|
-| `GCP_PROJECT_ID` | Your GCP project ID (e.g. `my-project`) |
-| `WIF_PROVIDER` | Full WIF provider name from the `describe` command above (e.g. `projects/123456789012/locations/global/workloadIdentityPools/github/providers/github`) |
-| `WIF_SERVICE_ACCOUNT` | Your SA email, e.g. `github-actions-sa@tools-471222.iam.gserviceaccount.com` |
+| Secret | Value | Used by |
+|--------|--------|--------|
+| `GCP_PROJECT_ID` | Your GCP project ID (e.g. `my-project`) | Both |
+| `WIF_PROVIDER` | Full WIF provider name from the `describe` command above | Both |
+| `WIF_SERVICE_ACCOUNT` | Your SA email, e.g. `github-actions-sa@tools-471222.iam.gserviceaccount.com` | Both |
+| `NEXTAUTH_SECRET` | Secret for NextAuth (run `npx auth secret` or `openssl rand -base64 32`). Can be the same for local, staging, and prod. | Both |
+| `GOOGLE_CLIENT_ID` | OAuth 2.0 Client ID (add both staging and prod redirect URIs in Google Console) | Both |
+| `GOOGLE_CLIENT_SECRET` | OAuth 2.0 Client secret | Both |
+| `STAGING_DATABASE_URL` | Staging Postgres URL (e.g. socket: `postgresql://user:pass@/db?host=/cloudsql/PROJECT:REGION:INSTANCE`) | Staging |
+| `PRODUCTION_NEXTAUTH_URL` | Production Cloud Run URL or custom domain (no trailing slash) | Production |
+| `PRODUCTION_DATABASE_URL` | Production Postgres URL | Production |
 
-**First deploy:** The first push to `staging` (or `production`/`main`) will create the Cloud Run service if it doesn’t exist. Ensure the Artifact Registry repo exists (e.g. create `cloud-run-source-deploy` in the Console or run `gcloud artifacts repositories create cloud-run-source-deploy --repository-format=docker --location=us-central1` once). Then set **env vars** for each service in Cloud Run (staging vs production URLs and DBs).
+**First deploy:** The first push to `staging` (or `production`/`main`) will create the Cloud Run service if it doesn’t exist. Ensure the Artifact Registry repo exists (e.g. create `cloud-run-source-deploy` in the Console or run `gcloud artifacts repositories create cloud-run-source-deploy --repository-format=docker --location=us-central1` once). The workflow injects the app env vars (NEXTAUTH_SECRET, NEXTAUTH_URL, GOOGLE_*, DATABASE_URL) on every deploy, so you do not set them in the Console.
 
 **Troubleshooting: "The given credential is rejected by the attribute condition"**
 
