@@ -1,0 +1,27 @@
+# Dependencies and build output
+node_modules
+.next
+out
+build
+
+# Git and env (secrets go via Cloud Run env, not image)
+.git
+.gitignore
+.env*
+!.env.example
+
+# Docs and dev (optional: remove if you want them in image)
+README.md
+DESIGN.md
+ARCHITECTURE.md
+*.md
+
+# IDE and misc
+.DS_Store
+*.log
+.vercel
+
+# Tests (if any later)
+coverage
+*.test.*
+*.spec.*

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
@@ -13,34 +13,34 @@ export default function NewTicketPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
-  const supabase = createClient()
+  const { data: session, status } = useSession()
+  const profileId = (session?.user as { id?: string } | undefined)?.id
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
-      setError('You must be logged in to create a ticket')
+    if (!profileId) {
+      setError('You must be signed in to create a ticket')
       setLoading(false)
       return
     }
 
-    const { error } = await supabase
-      .from('tickets')
-      .insert({
-        user_id: user.id,
+    const res = await fetch('/api/tickets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         dir_number: dirNumber,
         project_title: projectTitle,
         date_worked: dateWorked,
         hours_worked: parseFloat(hoursWorked),
-        status: 'pending',
-      })
+      }),
+    })
+    const data = await res.json()
 
-    if (error) {
-      setError(error.message)
+    if (!res.ok) {
+      setError(data.error || 'Failed to create ticket')
       setLoading(false)
     } else {
       router.push('/tickets')

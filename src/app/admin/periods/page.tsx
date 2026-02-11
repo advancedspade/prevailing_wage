@@ -1,4 +1,5 @@
-import { createClient } from '@/lib/supabase/server'
+import { getAuthUserAndProfile } from '@/lib/auth-db'
+import { query } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getPayPeriod, getPayPeriodKey, calculateAdjustedPay } from '@/lib/types'
@@ -9,7 +10,7 @@ interface EmployeeData {
   profile: Profile
   tickets: Ticket[]
   totalHours: number
-  totalAdjustedPay: number | null  // null means salary not set
+  totalAdjustedPay: number | null
   periodStatus: EmployeePeriodStatus
   employeePeriodId?: string
   hourlyWage?: number | null
@@ -24,36 +25,68 @@ interface PeriodData {
   employees: EmployeeData[]
 }
 
-export default async function PayPeriodsPage() {
-  const supabase = await createClient()
+interface TicketRow {
+  id: string
+  user_id: string
+  dir_number: string
+  project_title: string
+  date_worked: string
+  hours_worked: number
+  status: string
+  created_at: string
+  updated_at: string
+  profile_id: string
+  profile_email: string
+  profile_full_name: string | null
+  profile_role: string
+  profile_salary: number | null
+  profile_created_at: string
+  profile_updated_at: string
+}
 
-  const { data: { user } } = await supabase.auth.getUser()
+export default async function PayPeriodsPage() {
+  const { user, profile } = await getAuthUserAndProfile()
 
   if (!user) {
     redirect('/login')
   }
 
-  // Check if user is admin
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
   if (profile?.role !== 'admin') {
     redirect('/dashboard')
   }
 
-  // Get all tickets with profiles
-  const { data: tickets } = await supabase
-    .from('tickets')
-    .select('*, profile:profiles(*)')
-    .order('date_worked', { ascending: false })
+  const { rows: ticketRows } = await query<TicketRow>(
+    `SELECT t.id, t.user_id, t.dir_number, t.project_title, t.date_worked, t.hours_worked, t.status, t.created_at, t.updated_at,
+            p.id as profile_id, p.email as profile_email, p.full_name as profile_full_name, p.role as profile_role,
+            p.salary as profile_salary, p.created_at as profile_created_at, p.updated_at as profile_updated_at
+     FROM public.tickets t
+     JOIN public.profiles p ON p.id = t.user_id
+     ORDER BY t.date_worked DESC`
+  )
+  const ticketsWithProfile = ticketRows.map((t) => ({
+    id: t.id,
+    user_id: t.user_id,
+    dir_number: t.dir_number,
+    project_title: t.project_title,
+    date_worked: t.date_worked,
+    hours_worked: t.hours_worked,
+    status: t.status,
+    created_at: t.created_at,
+    updated_at: t.updated_at,
+    profile: {
+      id: t.profile_id,
+      email: t.profile_email,
+      full_name: t.profile_full_name,
+      role: t.profile_role,
+      salary: t.profile_salary,
+      created_at: t.profile_created_at,
+      updated_at: t.profile_updated_at,
+    },
+  }))
 
-  // Get all employee_periods
-  const { data: employeePeriods } = await supabase
-    .from('employee_periods')
-    .select('*')
+  const { rows: employeePeriods } = await query(
+    'SELECT * FROM public.employee_periods'
+  )
 
   // Build a lookup for employee period statuses
   const periodStatusMap = new Map<string, { status: EmployeePeriodStatus; id: string; hourlyWage: number | null }>()
@@ -66,7 +99,7 @@ export default async function PayPeriodsPage() {
   const periodMap = new Map<string, PeriodData>()
   const employeeTickets = new Map<string, { profile: Profile; tickets: Ticket[] }>()
 
-  tickets?.forEach((ticket) => {
+  ticketsWithProfile?.forEach((ticket) => {
     const date = new Date(ticket.date_worked)
     const payPeriod = getPayPeriod(date)
     const periodKey = getPayPeriodKey(payPeriod.year, payPeriod.month, payPeriod.period)
