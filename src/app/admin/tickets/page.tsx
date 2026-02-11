@@ -3,7 +3,7 @@ import { query } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { STATUS_LABELS, getPayPeriod, calculateAdjustedPay } from '@/lib/types'
-import type { EmployeePeriodStatus } from '@/lib/types'
+import type { EmployeePeriodStatus, EmployeePeriod } from '@/lib/types'
 
 interface TicketRow {
   id: string
@@ -37,7 +37,7 @@ export default async function AdminTicketsPage() {
      ORDER BY t.created_at DESC`
   )
 
-  const { rows: employeePeriods } = await query(
+  const { rows: employeePeriods } = await query<EmployeePeriod>(
     'SELECT * FROM public.employee_periods'
   )
 

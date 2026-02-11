@@ -3,6 +3,7 @@ import { query } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { STATUS_LABELS } from '@/lib/types'
+import type { Ticket } from '@/lib/types'
 
 export default async function TicketsPage() {
   const { user } = await getAuthUserAndProfile()
@@ -11,7 +12,7 @@ export default async function TicketsPage() {
     redirect('/login')
   }
 
-  const { rows: tickets } = await query(
+  const { rows: tickets } = await query<Ticket>(
     `SELECT * FROM public.tickets WHERE user_id = $1 ORDER BY created_at DESC`,
     [user.id]
   )

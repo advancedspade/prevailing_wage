@@ -3,7 +3,7 @@ import { query } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getPayPeriod, getPayPeriodKey, calculateAdjustedPay } from '@/lib/types'
-import type { Profile, Ticket, EmployeePeriodStatus, EmployeePeriod } from '@/lib/types'
+import type { Profile, Ticket, TicketStatus, UserRole, EmployeePeriodStatus, EmployeePeriod } from '@/lib/types'
 import { PeriodsClient } from './periods-client'
 
 interface EmployeeData {
@@ -63,21 +63,21 @@ export default async function PayPeriodsPage() {
      JOIN public.profiles p ON p.id = t.user_id
      ORDER BY t.date_worked DESC`
   )
-  const ticketsWithProfile = ticketRows.map((t) => ({
+  const ticketsWithProfile: Ticket[] = ticketRows.map((t) => ({
     id: t.id,
     user_id: t.user_id,
     dir_number: t.dir_number,
     project_title: t.project_title,
     date_worked: t.date_worked,
     hours_worked: t.hours_worked,
-    status: t.status,
+    status: t.status as TicketStatus,
     created_at: t.created_at,
     updated_at: t.updated_at,
     profile: {
       id: t.profile_id,
       email: t.profile_email,
       full_name: t.profile_full_name,
-      role: t.profile_role,
+      role: t.profile_role as UserRole,
       salary: t.profile_salary,
       created_at: t.profile_created_at,
       updated_at: t.profile_updated_at,

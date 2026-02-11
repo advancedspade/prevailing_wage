@@ -3,6 +3,7 @@ import { query } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { SalaryInput } from './salary-input'
+import type { Profile } from '@/lib/types'
 
 export default async function AdminUsersPage() {
   const { user, profile } = await getAuthUserAndProfile()
@@ -15,7 +16,7 @@ export default async function AdminUsersPage() {
     redirect('/dashboard')
   }
 
-  const { rows: users } = await query(
+  const { rows: users } = await query<Profile>(
     `SELECT * FROM public.profiles WHERE role = 'user' ORDER BY created_at DESC`
   )
 

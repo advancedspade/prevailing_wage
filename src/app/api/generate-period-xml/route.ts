@@ -2,6 +2,7 @@ import { getAuthUserAndProfile } from '@/lib/auth-db'
 import { query, queryOne } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
 import { parsePayPeriodKey, formatPayPeriodLabel, calculateAdjustedPay, calculateHourlyRate, PREVAILING_WAGE_CONSTANTS } from '@/lib/types'
+import type { Profile, Ticket } from '@/lib/types'
 
 export async function POST(request: NextRequest) {
   const { user, profile } = await getAuthUserAndProfile()
@@ -36,12 +37,12 @@ export async function POST(request: NextRequest) {
   const startDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`
   const endDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`
 
-  const employee = await queryOne(
+  const employee = await queryOne<Profile>(
     'SELECT * FROM public.profiles WHERE id = $1',
     [userId]
   )
 
-  const { rows: tickets } = await query(
+  const { rows: tickets } = await query<Ticket>(
     `SELECT * FROM public.tickets WHERE user_id = $1 AND date_worked >= $2 AND date_worked <= $3 ORDER BY date_worked ASC`,
     [userId, startDate, endDate]
   )

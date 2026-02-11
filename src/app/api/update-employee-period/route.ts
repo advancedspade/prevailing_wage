@@ -2,6 +2,7 @@ import { getAuthUserAndProfile } from '@/lib/auth-db'
 import { query, queryOne } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
 import { parsePayPeriodKey } from '@/lib/types'
+import type { EmployeePeriod } from '@/lib/types'
 
 export async function POST(request: NextRequest) {
   const { user, profile } = await getAuthUserAndProfile()
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
     [userId, year, month, period, status]
   )
 
-  const data = await queryOne(
+  const data = await queryOne<EmployeePeriod>(
     `SELECT * FROM public.employee_periods WHERE user_id = $1 AND year = $2 AND month = $3 AND period = $4`,
     [userId, year, month, period]
   )
