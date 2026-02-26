@@ -1,4 +1,5 @@
-import { createClient } from '@/lib/supabase/server'
+import { getAuthUserAndProfile } from '@/lib/auth-db'
+import { query } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
 
 interface ParsedRow {
@@ -11,34 +12,26 @@ interface ParsedRow {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient()
-  
   // Check auth
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
+  const { profile } = await getAuthUserAndProfile()
+  if (!profile) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   // Check admin
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profile?.role !== 'admin') {
+  if (profile.role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   const { rows } = await request.json() as { rows: ParsedRow[] }
 
   // Get all existing employees by name
-  const { data: existingProfiles } = await supabase
-    .from('profiles')
-    .select('id, full_name')
+  const { rows: existingProfiles } = await query<{ id: string; full_name: string | null }>(
+    'SELECT id, full_name FROM public.profiles'
+  )
 
   const profileMap = new Map<string, string>()
-  existingProfiles?.forEach(p => {
+  existingProfiles.forEach(p => {
     if (p.full_name) {
       profileMap.set(p.full_name.toLowerCase(), p.id)
     }
@@ -56,50 +49,41 @@ export async function POST(request: NextRequest) {
       // Create employee if doesn't exist
       if (!personId) {
         const newId = crypto.randomUUID()
-        const { error } = await supabase
-          .from('profiles')
-          .insert({
-            id: newId,
-            email: `${personName.replace(/\s+/g, '.').toLowerCase()}@placeholder.local`,
-            full_name: personName,
-            role: 'user',
-            salary: null
-          })
+        const placeholderEmail = `${personName.replace(/\s+/g, '.').toLowerCase()}@placeholder.local`
 
-        if (!error) {
+        try {
+          await query(
+            `INSERT INTO public.profiles (id, email, full_name, role, salary)
+             VALUES ($1, $2, $3, 'user', NULL)`,
+            [newId, placeholderEmail, personName]
+          )
           personId = newId
           profileMap.set(nameLower, newId)
           employeesCreated++
-        } else {
+        } catch (error) {
           console.error('Error creating profile:', error)
           continue
         }
       }
 
       // Create ticket for this person
-      const { error: ticketError } = await supabase
-        .from('tickets')
-        .insert({
-          user_id: personId,
-          dir_number: row.dirNumber,
-          project_title: row.projectTitle,
-          date_worked: row.dateWorked,
-          hours_worked: row.totalHours,
-          status: 'pending'
-        })
-
-      if (!ticketError) {
+      try {
+        await query(
+          `INSERT INTO public.tickets (user_id, dir_number, project_title, date_worked, hours_worked, status)
+           VALUES ($1, $2, $3, $4, $5, 'pending')`,
+          [personId, row.dirNumber, row.projectTitle, row.dateWorked, row.totalHours]
+        )
         ticketsCreated++
-      } else {
-        console.error('Error creating ticket:', ticketError)
+      } catch (error) {
+        console.error('Error creating ticket:', error)
       }
     }
   }
 
-  return NextResponse.json({ 
-    success: true, 
-    employeesCreated, 
-    ticketsCreated 
+  return NextResponse.json({
+    success: true,
+    employeesCreated,
+    ticketsCreated
   })
 }
 
