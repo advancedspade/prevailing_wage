@@ -41,7 +41,7 @@ export default async function PayPeriodsPage() {
     .single()
 
   if (profile?.role !== 'admin') {
-    redirect('/dashboard')
+    redirect('/login')
   }
 
   // Get all tickets with profiles
@@ -144,21 +144,46 @@ export default async function PayPeriodsPage() {
       <nav className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
-            <div className="flex items-center gap-4">
-              <Link href="/dashboard" className="text-xl font-light tracking-tight" style={{ color: '#1a1a2e' }}>
-                Advanced Spade
+            <div className="flex items-center gap-6">
+              <Link href="/admin/periods" className="text-xl font-light tracking-tight" style={{ color: '#1a1a2e' }}>
+                Koda
               </Link>
-              <span style={{ color: '#d1d1d1' }}>/</span>
-              <span className="text-sm" style={{ color: '#6b7280' }}>Pay Periods</span>
+              <div className="flex items-center gap-4">
+                <Link href="/admin/periods" className="text-sm font-medium" style={{ color: '#1a1a2e' }}>
+                  Pay Periods
+                </Link>
+                <Link href="/admin/users" className="text-sm" style={{ color: '#6b7280' }}>
+                  Employees
+                </Link>
+                <Link href="/admin/tickets" className="text-sm" style={{ color: '#6b7280' }}>
+                  Tickets
+                </Link>
+              </div>
+            </div>
+            <div className="flex items-center">
+              <form action="/auth/signout" method="post">
+                <button type="submit" className="text-sm" style={{ color: '#6b7280' }}>
+                  Sign Out
+                </button>
+              </form>
             </div>
           </div>
         </div>
       </nav>
 
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        <h2 className="text-2xl font-light tracking-tight mb-6" style={{ color: '#1a1a2e' }}>
-          Pay Periods
-        </h2>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-light tracking-tight" style={{ color: '#1a1a2e' }}>
+            Pay Periods
+          </h2>
+          <Link
+            href="/admin/upload"
+            className="py-2 px-4 text-sm font-medium text-white"
+            style={{ background: '#1a1a2e' }}
+          >
+            Import CSV
+          </Link>
+        </div>
 
         <PeriodsClient periods={periods} />
       </main>

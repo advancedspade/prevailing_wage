@@ -31,8 +31,8 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   // Protected routes - redirect to login if not authenticated
-  const protectedRoutes = ['/dashboard', '/admin', '/tickets']
-  const isProtectedRoute = protectedRoutes.some(route => 
+  const protectedRoutes = ['/admin']
+  const isProtectedRoute = protectedRoutes.some(route =>
     request.nextUrl.pathname.startsWith(route)
   )
 
@@ -42,16 +42,20 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Redirect logged-in users away from auth pages
-  const authRoutes = ['/login', '/signup']
-  const isAuthRoute = authRoutes.some(route => 
-    request.nextUrl.pathname.startsWith(route)
-  )
+  // Redirect logged-in ADMIN users away from login page
+  if (request.nextUrl.pathname.startsWith('/login') && user) {
+    // Check if user is admin before redirecting
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
 
-  if (isAuthRoute && user) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
-    return NextResponse.redirect(url)
+    if (profile?.role === 'admin') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/admin/periods'
+      return NextResponse.redirect(url)
+    }
   }
 
   return supabaseResponse
