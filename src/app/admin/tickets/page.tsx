@@ -1,42 +1,45 @@
-import { createClient } from '@/lib/supabase/server'
+import { getAuthUserAndProfile } from '@/lib/auth-db'
+import { query } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { STATUS_LABELS, getPayPeriod, calculateAdjustedPay } from '@/lib/types'
-import type { EmployeePeriodStatus } from '@/lib/types'
+import type { EmployeePeriodStatus, EmployeePeriod } from '@/lib/types'
+
+interface TicketRow {
+  id: string
+  user_id: string
+  dir_number: string
+  project_title: string
+  date_worked: string
+  hours_worked: number
+  status: string
+  created_at: string
+  full_name: string | null
+  email: string
+  salary: number | null
+}
 
 export default async function AdminTicketsPage() {
-  const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user, profile } = await getAuthUserAndProfile()
 
   if (!user) {
     redirect('/login')
   }
 
-  // Check if user is admin
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
   if (profile?.role !== 'admin') {
     redirect('/login')
   }
 
-  // Get all tickets with user info (including salary for calculation)
-  const { data: tickets } = await supabase
-    .from('tickets')
-    .select(`
-      *,
-      profile:profiles(full_name, email, salary)
-    `)
-    .order('created_at', { ascending: false })
+  const { rows: tickets } = await query<TicketRow>(
+    `SELECT t.*, p.full_name, p.email, p.salary
+     FROM public.tickets t
+     JOIN public.profiles p ON p.id = t.user_id
+     ORDER BY t.created_at DESC`
+  )
 
-  // Get all employee_periods to look up status
-  const { data: employeePeriods } = await supabase
-    .from('employee_periods')
-    .select('*')
+  const { rows: employeePeriods } = await query<EmployeePeriod>(
+    'SELECT * FROM public.employee_periods'
+  )
 
   // Build lookup map for employee period statuses
   const periodStatusMap = new Map<string, EmployeePeriodStatus>()
@@ -45,7 +48,6 @@ export default async function AdminTicketsPage() {
     periodStatusMap.set(key, ep.status)
   })
 
-  // Helper to get status for a ticket based on its employee's period
   const getTicketPeriodStatus = (ticket: { user_id: string; date_worked: string }): EmployeePeriodStatus => {
     const date = new Date(ticket.date_worked)
     const payPeriod = getPayPeriod(date)
@@ -117,11 +119,11 @@ export default async function AdminTicketsPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {tickets.map((ticket) => {
                   const periodStatus = getTicketPeriodStatus(ticket)
-                  const adjustedPay = calculateAdjustedPay(Number(ticket.hours_worked), ticket.profile?.salary || null)
+                  const adjustedPay = calculateAdjustedPay(Number(ticket.hours_worked), ticket.salary ?? null)
                   return (
                     <tr key={ticket.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: '#1a1a2e' }}>
-                        {ticket.profile?.full_name || ticket.profile?.email || 'Unknown'}
+                        {ticket.full_name || ticket.email || 'Unknown'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" style={{ color: '#1a1a2e' }}>
                         {ticket.dir_number}

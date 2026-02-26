@@ -1,22 +1,15 @@
-import { createClient } from '@/lib/supabase/server'
+import { getAuthUserAndProfile } from '@/lib/auth-db'
+import { query, queryOne } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
 import { parsePayPeriodKey, formatPayPeriodLabel, calculateAdjustedPay, calculateHourlyRate, PREVAILING_WAGE_CONSTANTS } from '@/lib/types'
+import type { Profile, Ticket } from '@/lib/types'
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient()
-  
-  // Check auth
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user, profile } = await getAuthUserAndProfile()
+
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-
-  // Check admin
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
 
   if (profile?.role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -36,31 +29,23 @@ export async function POST(request: NextRequest) {
     grossWages
   } = await request.json()
 
-  // Parse period
   const { year, month, period } = parsePayPeriodKey(periodKey)
   const periodLabel = formatPayPeriodLabel(year, month, period)
 
-  // Calculate date range
   const startDay = period === 1 ? 1 : 16
   const endDay = period === 1 ? 15 : new Date(year, month + 1, 0).getDate()
   const startDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`
   const endDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`
 
-  // Get employee
-  const { data: employee } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single()
+  const employee = await queryOne<Profile>(
+    'SELECT * FROM public.profiles WHERE id = $1',
+    [userId]
+  )
 
-  // Get tickets for this employee in this period
-  const { data: tickets } = await supabase
-    .from('tickets')
-    .select('*')
-    .eq('user_id', userId)
-    .gte('date_worked', startDate)
-    .lte('date_worked', endDate)
-    .order('date_worked', { ascending: true })
+  const { rows: tickets } = await query<Ticket>(
+    `SELECT * FROM public.tickets WHERE user_id = $1 AND date_worked >= $2 AND date_worked <= $3 ORDER BY date_worked ASC`,
+    [userId, startDate, endDate]
+  )
 
   // Calculate totals using the new formula
   const hourlyRate = calculateHourlyRate(yearlySalary) || 0
@@ -129,20 +114,13 @@ ${tickets?.map(t => {
   <GeneratedAt>${new Date().toISOString()}</GeneratedAt>
 </DIRSubmission>`
 
-  // Update employee_period status to ready_for_dir and save hourly rate
-  await supabase
-    .from('employee_periods')
-    .upsert({
-      user_id: userId,
-      year,
-      month,
-      period,
-      status: 'ready_for_dir',
-      hourly_wage: hourlyRate,
-      updated_at: new Date().toISOString()
-    }, {
-      onConflict: 'user_id,year,month,period'
-    })
+  await query(
+    `INSERT INTO public.employee_periods (user_id, year, month, period, status, hourly_wage)
+     VALUES ($1, $2, $3, $4, 'ready_for_dir', $5)
+     ON CONFLICT (user_id, year, month, period)
+     DO UPDATE SET status = 'ready_for_dir', hourly_wage = EXCLUDED.hourly_wage, updated_at = now()`,
+    [userId, year, month, period, hourlyRate]
+  )
 
   return NextResponse.json({ xml })
 }

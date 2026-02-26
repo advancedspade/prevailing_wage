@@ -6,13 +6,14 @@ Prevailing wage tracking app for employees to submit work tickets and admins to 
 
 ## Tech Stack
 
-| Current | GCP Equivalent |
-|---------|----------------|
-| Next.js 16 | Keep (deploy to Cloud Run) |
-| Supabase Auth | Firebase Auth / Identity Platform |
-| Supabase PostgreSQL | Cloud SQL (PostgreSQL) |
-| Supabase RLS | Cloud SQL + app-level auth checks |
-| Vercel | Cloud Run or App Engine |
+| Component | Current |
+|-----------|---------|
+| App / Hosting | Next.js 16 on Cloud Run |
+| Auth | Supabase Auth (login/signup/session) |
+| Database | **Cloud SQL (PostgreSQL)** – profiles, tickets, employee_periods |
+| Data access | `pg` in `src/lib/db.ts`; auth + profile helper in `src/lib/auth-db.ts` |
+
+Optional future migration: replace Supabase Auth with Firebase Auth / Identity Platform.
 
 ## Database Schema
 
@@ -31,13 +32,16 @@ Prevailing wage tracking app for employees to submit work tickets and admins to 
 
 ## Key Files
 
-| File | Purpose | Supabase Dependency |
-|------|---------|---------------------|
-| `src/lib/supabase/client.ts` | Browser Supabase client | Replace |
-| `src/lib/supabase/server.ts` | Server Supabase client | Replace |
-| `src/middleware.ts` | Auth session refresh | Replace |
-| `src/lib/types.ts` | Types & calculations | Keep |
-| `src/app/api/*` | API routes | Update DB calls |
+| File | Purpose |
+|------|---------|
+| `src/lib/supabase/client.ts` | Browser Supabase client (auth only) |
+| `src/lib/supabase/server.ts` | Server Supabase client (auth only) |
+| `src/lib/db.ts` | Cloud SQL PostgreSQL client (`pg`) |
+| `src/lib/auth-db.ts` | Get current user + profile from auth + DB; ensures profile exists |
+| `src/middleware.ts` | Auth session refresh (Supabase) |
+| `src/app/api/tickets/route.ts` | Create ticket (writes to Cloud SQL) |
+| `src/app/api/profiles/[id]/salary/route.ts` | Update profile salary (admin) |
+| `cloudsql-schema.sql` | Cloud SQL schema (run once on the instance) |
 
 ## Auth Flow
 
@@ -53,42 +57,29 @@ Adjusted Pay = (76.94 - (hourlyRate + 4.69 + (120 × hourlyRate / 2080))) × hou
 ```
 Where `hourlyRate = yearlySalary / 2080`
 
-## GCP Migration Steps
+## Environment Variables
 
-### 1. Database (Cloud SQL)
-- [ ] Create Cloud SQL PostgreSQL instance
-- [ ] Run schema migrations (see `supabase-*.sql` files)
-- [ ] Update connection in `src/lib/supabase/server.ts` → use `pg` or Prisma
-
-### 2. Auth (Firebase)
-- [ ] Set up Firebase Auth project
-- [ ] Replace `@supabase/ssr` with `firebase-admin`
-- [ ] Update `middleware.ts` to verify Firebase tokens
-- [ ] Update login/signup pages to use Firebase client SDK
-
-### 3. Deploy (Cloud Run)
-- [ ] Create Dockerfile for Next.js
-- [ ] Set environment variables in Cloud Run
-- [ ] Deploy with `gcloud run deploy`
-
-### 4. Environment Variables
 ```
-# Current (Supabase)
+# Auth (Supabase)
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 
-# GCP (replace with)
-DATABASE_URL=postgresql://...
-FIREBASE_PROJECT_ID=
-FIREBASE_CLIENT_EMAIL=
-FIREBASE_PRIVATE_KEY=
+# Database (Cloud SQL PostgreSQL)
+DATABASE_URL=postgresql://user:password@host:5432/dbname
 ```
 
-## SQL Migration Files
+For Cloud Run with Cloud SQL socket:  
+`DATABASE_URL=postgresql://user:password@/dbname?host=/cloudsql/PROJECT:REGION:INSTANCE`
 
-- `supabase-schema.sql` - Initial tables (profiles, tickets)
-- `supabase-fix-rls.sql` - RLS policies & security definer function
-- `supabase-employee-periods.sql` - Employee periods table
+## Optional: Migrate Auth to Firebase
 
-These can be run directly on Cloud SQL PostgreSQL.
+- [ ] Set up Firebase Auth project
+- [ ] Replace `@supabase/ssr` with `firebase-admin` and Firebase client SDK
+- [ ] Update `middleware.ts` and login/signup to use Firebase
+- [ ] Keep Cloud SQL and `src/lib/db.ts` as-is
+
+## SQL Schema
+
+- **`cloudsql-schema.sql`** – Run once on your Cloud SQL instance. Creates `profiles`, `tickets`, `employee_periods` and triggers (no RLS; auth enforced in the app).
+- The legacy `supabase-*.sql` files were for Supabase; use `cloudsql-schema.sql` for Cloud SQL.
 
