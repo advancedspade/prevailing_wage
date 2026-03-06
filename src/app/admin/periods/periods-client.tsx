@@ -33,28 +33,6 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
   const [showWageModal, setShowWageModal] = useState<{ periodKey: string; userId: string; employeeName: string; totalAdjustedPay: number | null; yearlySalary: number | null } | null>(null)
   const [loading, setLoading] = useState(false)
 
-  // Check/payroll input fields
-  const [checkNumber, setCheckNumber] = useState('')
-  const [federalTax, setFederalTax] = useState('')
-  const [fica, setFica] = useState('')
-  const [stateTax, setStateTax] = useState('')
-  const [sdi, setSdi] = useState('')
-  const [savings, setSavings] = useState('')
-  const [total, setTotal] = useState('')
-  const [grossWages, setGrossWages] = useState('')
-
-  // Reset form fields when modal closes
-  const resetFormFields = () => {
-    setCheckNumber('')
-    setFederalTax('')
-    setFica('')
-    setStateTax('')
-    setSdi('')
-    setSavings('')
-    setTotal('')
-    setGrossWages('')
-  }
-
   // Calculate hourly wage from yearly salary (2080 hours/year = 40 hrs/week × 52 weeks)
   const hourlyWage = showWageModal?.yearlySalary ? showWageModal.yearlySalary / 2080 : 0
 
@@ -86,26 +64,34 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
     window.location.reload()
   }
 
-  const handleGenerateXml = async () => {
+  const handleSaveEmployeeInfo = async () => {
     if (!showWageModal || !showWageModal.yearlySalary) return
     setLoading(true)
 
-    const res = await fetch('/api/generate-period-xml', {
+    const res = await fetch('/api/save-employee-period', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         periodKey: showWageModal.periodKey,
         userId: showWageModal.userId,
-        yearlySalary: showWageModal.yearlySalary,
-        checkNumber,
-        federalTax: parseFloat(federalTax) || 0,
-        fica: parseFloat(fica) || 0,
-        stateTax: parseFloat(stateTax) || 0,
-        sdi: parseFloat(sdi) || 0,
-        savings: parseFloat(savings) || 0,
-        total: parseFloat(total) || 0,
-        grossWages: parseFloat(grossWages) || 0
+        yearlySalary: showWageModal.yearlySalary
       })
+    })
+
+    if (res.ok) {
+      setShowWageModal(null)
+      window.location.reload()
+    }
+
+    setLoading(false)
+  }
+
+  const handleGeneratePeriodXml = async (periodKey: string) => {
+    setLoading(true)
+    const res = await fetch('/api/generate-period-xml', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ periodKey })
     })
 
     if (res.ok) {
@@ -114,15 +100,11 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `dir-${showWageModal.employeeName.replace(/\s+/g, '-').toLowerCase()}-${showWageModal.periodKey}.xml`
+      a.download = `dir-period-${periodKey}.xml`
       a.click()
       URL.revokeObjectURL(url)
     }
-
-    setShowWageModal(null)
-    resetFormFields()
     setLoading(false)
-    window.location.reload()
   }
 
   // Calculate period total adjusted pay (only for employees with salary set)
@@ -144,14 +126,16 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
           <p style={{ color: '#6b7280' }}>No tickets submitted yet</p>
         </div>
       ) : (
-        periods.map(period => (
+        periods.map(period => {
+          const allReady = period.employees.length > 0 && period.employees.every(e => e.periodStatus === 'ready_for_dir')
+          return (
           <div key={period.key} className="bg-white border border-gray-200">
             {/* Period Header */}
-            <button
-              onClick={() => togglePeriod(period.key)}
-              className="w-full p-4 flex justify-between items-center hover:bg-gray-50 transition-colors text-left"
-            >
-              <div className="flex items-center gap-3">
+            <div className="p-4 flex justify-between items-center">
+              <button
+                onClick={() => togglePeriod(period.key)}
+                className="flex items-center gap-3 hover:opacity-70 text-left"
+              >
                 <span className="text-lg" style={{ color: '#6b7280' }}>
                   {expandedPeriods.has(period.key) ? '▼' : '▶'}
                 </span>
@@ -161,8 +145,8 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
                 <span className="text-sm" style={{ color: '#6b7280' }}>
                   {period.employees.length} employee{period.employees.length !== 1 ? 's' : ''}
                 </span>
-              </div>
-              <div className="text-right flex items-center gap-6">
+              </button>
+              <div className="flex items-center gap-6">
                 <div>
                   <span className="text-sm font-medium" style={{ color: '#1a1a2e' }}>
                     ${getPeriodTotalCAC(period.employees).toFixed(2)}
@@ -184,8 +168,17 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
                     )
                   })()}
                 </div>
+                <button
+                  onClick={() => handleGeneratePeriodXml(period.key)}
+                  disabled={loading || !allReady}
+                  className="px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50 hover:opacity-80"
+                  style={{ background: allReady ? '#1a1a2e' : '#9ca3af' }}
+                  title={allReady ? 'Generate XML for all employees' : 'All employees must be marked Ready for DIR'}
+                >
+                  Generate Period XML
+                </button>
               </div>
-            </button>
+            </div>
 
             {/* Period Content - Employees */}
             {expandedPeriods.has(period.key) && (
@@ -307,15 +300,15 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
               </div>
             )}
           </div>
-        ))
+        )})
       )}
 
-      {/* Wage Entry Modal */}
+      {/* Mark Ready for DIR Modal */}
       {showWageModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-8 max-w-lg w-full mx-4 border border-gray-200 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white p-8 max-w-md w-full mx-4 border border-gray-200">
             <h3 className="text-xl font-light mb-6" style={{ color: '#1a1a2e' }}>
-              Generate DIR XML
+              Mark Ready for DIR
             </h3>
 
             <div className="space-y-4 mb-6">
@@ -346,123 +339,22 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
                 </div>
               )}
 
-              {/* Check/Payroll Information */}
-              <div className="pt-4 border-t border-gray-200">
-                <h4 className="text-sm font-medium mb-3" style={{ color: '#1a1a2e' }}>Check Information</h4>
-
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-medium mb-1" style={{ color: '#6b7280' }}>Check Number</label>
-                    <input
-                      type="text"
-                      value={checkNumber}
-                      onChange={(e) => setCheckNumber(e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:border-gray-500"
-                      placeholder="Enter check number"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium mb-1" style={{ color: '#6b7280' }}>Gross Wages</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={grossWages}
-                        onChange={(e) => setGrossWages(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:border-gray-500"
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium mb-1" style={{ color: '#6b7280' }}>Federal Tax</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={federalTax}
-                        onChange={(e) => setFederalTax(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:border-gray-500"
-                        placeholder="0.00"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium mb-1" style={{ color: '#6b7280' }}>FICA (Social Security)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={fica}
-                        onChange={(e) => setFica(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:border-gray-500"
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium mb-1" style={{ color: '#6b7280' }}>State Tax</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={stateTax}
-                        onChange={(e) => setStateTax(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:border-gray-500"
-                        placeholder="0.00"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium mb-1" style={{ color: '#6b7280' }}>SDI</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={sdi}
-                        onChange={(e) => setSdi(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:border-gray-500"
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium mb-1" style={{ color: '#6b7280' }}>Savings</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={savings}
-                        onChange={(e) => setSavings(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:border-gray-500"
-                        placeholder="0.00"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium mb-1" style={{ color: '#6b7280' }}>Total (Net Pay)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={total}
-                      onChange={(e) => setTotal(e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:border-gray-500"
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-              </div>
+              <p className="text-sm pt-4 border-t border-gray-200" style={{ color: '#6b7280' }}>
+                This will mark the employee as ready for DIR submission. You can then generate the period XML once all employees are ready.
+              </p>
             </div>
 
             <div className="flex gap-3">
               <button
-                onClick={handleGenerateXml}
+                onClick={handleSaveEmployeeInfo}
                 disabled={loading || !showWageModal.yearlySalary}
                 className="flex-1 py-2 px-4 text-sm font-medium text-white transition-colors disabled:opacity-50"
                 style={{ background: '#1a1a2e' }}
               >
-                {loading ? 'Generating...' : 'Generate & Download'}
+                {loading ? 'Saving...' : 'Mark Ready'}
               </button>
               <button
-                onClick={() => { setShowWageModal(null); resetFormFields(); }}
+                onClick={() => setShowWageModal(null)}
                 className="py-2 px-4 text-sm font-medium border border-gray-300 hover:border-gray-500 transition-colors"
                 style={{ color: '#1a1a2e' }}
               >

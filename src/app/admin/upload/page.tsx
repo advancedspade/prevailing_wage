@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { SignOutButton } from '@/components/sign-out-button'
 
 interface ParsedRow {
   ticketNumber: string
@@ -146,11 +147,7 @@ export default function UploadPage() {
               </div>
             </div>
             <div className="flex items-center">
-              <form action="/auth/signout" method="post">
-                <button type="submit" className="text-sm" style={{ color: '#6b7280' }}>
-                  Sign Out
-                </button>
-              </form>
+              <SignOutButton />
             </div>
           </div>
         </div>
