@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { SalaryInput } from './salary-input'
 import type { Profile } from '@/lib/types'
+import { SignOutButton } from '@/components/sign-out-button'
 
 export default async function AdminUsersPage() {
   const { user, profile } = await getAuthUserAndProfile()
@@ -42,11 +43,7 @@ export default async function AdminUsersPage() {
               </div>
             </div>
             <div className="flex items-center">
-              <form action="/auth/signout" method="post">
-                <button type="submit" className="text-sm" style={{ color: '#6b7280' }}>
-                  Sign Out
-                </button>
-              </form>
+              <SignOutButton />
             </div>
           </div>
         </div>

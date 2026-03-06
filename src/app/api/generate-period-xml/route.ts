@@ -1,8 +1,13 @@
 import { getAuthUserAndProfile } from '@/lib/auth-db'
-import { query, queryOne } from '@/lib/db'
+import { query } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
 import { parsePayPeriodKey, formatPayPeriodLabel, calculateAdjustedPay, calculateHourlyRate, PREVAILING_WAGE_CONSTANTS } from '@/lib/types'
 import type { Profile, Ticket } from '@/lib/types'
+
+interface EmployeePeriodRow {
+  user_id: string
+  hourly_wage: number | null
+}
 
 export async function POST(request: NextRequest) {
   const { user, profile } = await getAuthUserAndProfile()
@@ -15,19 +20,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const {
-    periodKey,
-    userId,
-    yearlySalary,
-    checkNumber,
-    federalTax,
-    fica,
-    stateTax,
-    sdi,
-    savings,
-    total,
-    grossWages
-  } = await request.json()
+  const { periodKey } = await request.json()
 
   const { year, month, period } = parsePayPeriodKey(periodKey)
   const periodLabel = formatPayPeriodLabel(year, month, period)
@@ -37,29 +30,83 @@ export async function POST(request: NextRequest) {
   const startDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`
   const endDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`
 
-  const employee = await queryOne<Profile>(
-    'SELECT * FROM public.profiles WHERE id = $1',
-    [userId]
+  // Get all employees who are ready for DIR in this period
+  const { rows: employeePeriods } = await query<EmployeePeriodRow>(
+    `SELECT user_id, hourly_wage FROM public.employee_periods
+     WHERE year = $1 AND month = $2 AND period = $3 AND status = 'ready_for_dir'`,
+    [year, month, period]
   )
 
-  const { rows: tickets } = await query<Ticket>(
-    `SELECT * FROM public.tickets WHERE user_id = $1 AND date_worked >= $2 AND date_worked <= $3 ORDER BY date_worked ASC`,
-    [userId, startDate, endDate]
+  if (employeePeriods.length === 0) {
+    return NextResponse.json({ error: 'No employees ready for DIR in this period' }, { status: 400 })
+  }
+
+  // Get all employee profiles
+  const userIds = employeePeriods.map(ep => ep.user_id)
+  const { rows: employees } = await query<Profile>(
+    `SELECT * FROM public.profiles WHERE id = ANY($1)`,
+    [userIds]
   )
 
-  // Calculate totals using the new formula
-  const hourlyRate = calculateHourlyRate(yearlySalary) || 0
-  const totalHours = tickets?.reduce((sum, t) => sum + Number(t.hours_worked), 0) || 0
-  const totalAdjustedPay = tickets?.reduce((sum, t) => {
-    const adjustedPay = calculateAdjustedPay(Number(t.hours_worked), yearlySalary)
-    return sum + (adjustedPay || 0)
-  }, 0) || 0
+  // Get all tickets for these employees in this period
+  const { rows: allTickets } = await query<Ticket & { user_id: string }>(
+    `SELECT * FROM public.tickets
+     WHERE user_id = ANY($1) AND date_worked >= $2 AND date_worked <= $3
+     ORDER BY user_id, date_worked ASC`,
+    [userIds, startDate, endDate]
+  )
 
-  // Get unique DIR numbers and projects
-  const dirNumbers = [...new Set(tickets?.map(t => t.dir_number) || [])]
-  const projects = [...new Set(tickets?.map(t => t.project_title) || [])]
+  // Build employee sections
+  const employeeSections = employees.map(emp => {
+    const empPeriod = employeePeriods.find(ep => ep.user_id === emp.id)
+    const yearlySalary = emp.salary || 0
+    const hourlyRate = calculateHourlyRate(yearlySalary) || 0
+    const empTickets = allTickets.filter(t => t.user_id === emp.id)
 
-  // Generate XML with new calculation details
+    const totalHours = empTickets.reduce((sum, t) => sum + Number(t.hours_worked), 0)
+    const totalAdjustedPay = empTickets.reduce((sum, t) => {
+      const adjustedPay = calculateAdjustedPay(Number(t.hours_worked), yearlySalary)
+      return sum + (adjustedPay || 0)
+    }, 0)
+
+    const ticketDetails = empTickets.map(t => {
+      const ticketAdjustedPay = calculateAdjustedPay(Number(t.hours_worked), yearlySalary) || 0
+      return `      <Ticket>
+        <Date>${t.date_worked}</Date>
+        <DIRNumber>${t.dir_number}</DIRNumber>
+        <Project>${t.project_title}</Project>
+        <Hours>${t.hours_worked}</Hours>
+        <AdjustedPay>${ticketAdjustedPay.toFixed(2)}</AdjustedPay>
+      </Ticket>`
+    }).join('\n')
+
+    return `    <Employee>
+      <Name>${emp.full_name || 'Unknown'}</Name>
+      <Email>${emp.email || ''}</Email>
+      <YearlySalary>${yearlySalary.toFixed(2)}</YearlySalary>
+      <HourlyRate>${hourlyRate.toFixed(2)}</HourlyRate>
+      <TotalHours>${totalHours.toFixed(2)}</TotalHours>
+      <TotalAdjustedPay>${totalAdjustedPay.toFixed(2)}</TotalAdjustedPay>
+      <Tickets>
+${ticketDetails}
+      </Tickets>
+    </Employee>`
+  }).join('\n')
+
+  // Calculate period totals
+  const periodTotalHours = allTickets.reduce((sum, t) => sum + Number(t.hours_worked), 0)
+  const periodTotalAdjustedPay = employees.reduce((sum, emp) => {
+    const empTickets = allTickets.filter(t => t.user_id === emp.id)
+    return sum + empTickets.reduce((s, t) => {
+      const adjustedPay = calculateAdjustedPay(Number(t.hours_worked), emp.salary)
+      return s + (adjustedPay || 0)
+    }, 0)
+  }, 0)
+
+  // Get unique DIR numbers and projects across all employees
+  const dirNumbers = [...new Set(allTickets.map(t => t.dir_number))]
+  const projects = [...new Set(allTickets.map(t => t.project_title))]
+
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <DIRSubmission>
   <PayPeriod>
@@ -67,60 +114,27 @@ export async function POST(request: NextRequest) {
     <StartDate>${startDate}</StartDate>
     <EndDate>${endDate}</EndDate>
   </PayPeriod>
-  <Employee>
-    <Name>${employee?.full_name || 'Unknown'}</Name>
-    <Email>${employee?.email || ''}</Email>
-    <YearlySalary>${yearlySalary.toFixed(2)}</YearlySalary>
-    <HourlyRate>${hourlyRate.toFixed(2)}</HourlyRate>
-  </Employee>
-  <CheckInformation>
-    <CheckNumber>${checkNumber || ''}</CheckNumber>
-    <GrossWages>${grossWages.toFixed(2)}</GrossWages>
-    <FederalTax>${federalTax.toFixed(2)}</FederalTax>
-    <FICA>${fica.toFixed(2)}</FICA>
-    <StateTax>${stateTax.toFixed(2)}</StateTax>
-    <SDI>${sdi.toFixed(2)}</SDI>
-    <Savings>${savings.toFixed(2)}</Savings>
-    <Total>${total.toFixed(2)}</Total>
-  </CheckInformation>
+  <EmployeeCount>${employees.length}</EmployeeCount>
+  <Employees>
+${employeeSections}
+  </Employees>
   <WageCalculation>
     <BaseRate>${PREVAILING_WAGE_CONSTANTS.BASE_RATE.toFixed(2)}</BaseRate>
     <FixedDeduction>${PREVAILING_WAGE_CONSTANTS.FIXED_DEDUCTION.toFixed(2)}</FixedDeduction>
-    <AdjustmentFactor>${((PREVAILING_WAGE_CONSTANTS.ADJUSTMENT_HOURS * hourlyRate) / PREVAILING_WAGE_CONSTANTS.HOURS_PER_YEAR).toFixed(2)}</AdjustmentFactor>
     <Formula>AdjustedPay = (BaseRate - (HourlyRate + FixedDeduction + AdjustmentFactor)) × Hours</Formula>
   </WageCalculation>
-  <WorkSummary>
-    <TotalHours>${totalHours.toFixed(2)}</TotalHours>
-    <TotalAdjustedPay>${totalAdjustedPay.toFixed(2)}</TotalAdjustedPay>
-  </WorkSummary>
+  <PeriodSummary>
+    <TotalHours>${periodTotalHours.toFixed(2)}</TotalHours>
+    <TotalAdjustedPay>${periodTotalAdjustedPay.toFixed(2)}</TotalAdjustedPay>
+  </PeriodSummary>
   <Projects>
 ${projects.map(p => `    <Project>${p}</Project>`).join('\n')}
   </Projects>
   <DIRNumbers>
 ${dirNumbers.map(d => `    <DIRNumber>${d}</DIRNumber>`).join('\n')}
   </DIRNumbers>
-  <TicketDetails>
-${tickets?.map(t => {
-    const ticketAdjustedPay = calculateAdjustedPay(Number(t.hours_worked), yearlySalary) || 0
-    return `    <Ticket>
-      <Date>${t.date_worked}</Date>
-      <DIRNumber>${t.dir_number}</DIRNumber>
-      <Project>${t.project_title}</Project>
-      <Hours>${t.hours_worked}</Hours>
-      <AdjustedPay>${ticketAdjustedPay.toFixed(2)}</AdjustedPay>
-    </Ticket>`
-  }).join('\n') || ''}
-  </TicketDetails>
   <GeneratedAt>${new Date().toISOString()}</GeneratedAt>
 </DIRSubmission>`
-
-  await query(
-    `INSERT INTO public.employee_periods (user_id, year, month, period, status, hourly_wage)
-     VALUES ($1, $2, $3, $4, 'ready_for_dir', $5)
-     ON CONFLICT (user_id, year, month, period)
-     DO UPDATE SET status = 'ready_for_dir', hourly_wage = EXCLUDED.hourly_wage, updated_at = now()`,
-    [userId, year, month, period, hourlyRate]
-  )
 
   return NextResponse.json({ xml })
 }
