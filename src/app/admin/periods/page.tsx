@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { getPayPeriod, getPayPeriodKey, calculateAdjustedPay } from '@/lib/types'
 import type { Profile, Ticket, TicketStatus, UserRole, EmployeePeriodStatus, EmployeePeriod } from '@/lib/types'
 import { PeriodsClient } from './periods-client'
+import { SignOutButton } from '@/components/sign-out-button'
 
 interface EmployeeData {
   profile: Profile
@@ -194,11 +195,7 @@ export default async function PayPeriodsPage() {
               </div>
             </div>
             <div className="flex items-center">
-              <form action="/auth/signout" method="post">
-                <button type="submit" className="text-sm" style={{ color: '#6b7280' }}>
-                  Sign Out
-                </button>
-              </form>
+              <SignOutButton />
             </div>
           </div>
         </div>

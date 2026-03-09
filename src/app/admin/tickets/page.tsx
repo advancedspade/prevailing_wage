@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { STATUS_LABELS, getPayPeriod, calculateAdjustedPay } from '@/lib/types'
 import type { EmployeePeriodStatus, EmployeePeriod } from '@/lib/types'
+import { SignOutButton } from '@/components/sign-out-button'
 
 interface TicketRow {
   id: string
@@ -77,11 +78,7 @@ export default async function AdminTicketsPage() {
               </div>
             </div>
             <div className="flex items-center">
-              <form action="/auth/signout" method="post">
-                <button type="submit" className="text-sm" style={{ color: '#6b7280' }}>
-                  Sign Out
-                </button>
-              </form>
+              <SignOutButton />
             </div>
           </div>
         </div>
