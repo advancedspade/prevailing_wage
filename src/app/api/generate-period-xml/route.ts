@@ -7,6 +7,14 @@ import type { Profile, Ticket } from '@/lib/types'
 interface EmployeePeriodRow {
   user_id: string
   hourly_wage: number | null
+  check_number: string | null
+  gross_wages: number | null
+  federal_tax: number | null
+  fica: number | null
+  state_tax: number | null
+  sdi: number | null
+  savings: number | null
+  net_pay: number | null
 }
 
 export async function POST(request: NextRequest) {
@@ -30,9 +38,10 @@ export async function POST(request: NextRequest) {
   const startDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`
   const endDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`
 
-  // Get all employees who are ready for DIR in this period
+  // Get all employees who are ready for DIR in this period (with check info)
   const { rows: employeePeriods } = await query<EmployeePeriodRow>(
-    `SELECT user_id, hourly_wage FROM public.employee_periods
+    `SELECT user_id, hourly_wage, check_number, gross_wages, federal_tax, fica, state_tax, sdi, savings, net_pay
+     FROM public.employee_periods
      WHERE year = $1 AND month = $2 AND period = $3 AND status = 'ready_for_dir'`,
     [year, month, period]
   )
@@ -80,6 +89,18 @@ export async function POST(request: NextRequest) {
       </Ticket>`
     }).join('\n')
 
+    // Build check information section
+    const checkInfo = empPeriod ? `      <CheckInformation>
+        <CheckNumber>${empPeriod.check_number || ''}</CheckNumber>
+        <GrossWages>${(empPeriod.gross_wages || 0).toFixed(2)}</GrossWages>
+        <FederalTax>${(empPeriod.federal_tax || 0).toFixed(2)}</FederalTax>
+        <FICA>${(empPeriod.fica || 0).toFixed(2)}</FICA>
+        <StateTax>${(empPeriod.state_tax || 0).toFixed(2)}</StateTax>
+        <SDI>${(empPeriod.sdi || 0).toFixed(2)}</SDI>
+        <Savings>${(empPeriod.savings || 0).toFixed(2)}</Savings>
+        <NetPay>${(empPeriod.net_pay || 0).toFixed(2)}</NetPay>
+      </CheckInformation>` : ''
+
     return `    <Employee>
       <Name>${emp.full_name || 'Unknown'}</Name>
       <Email>${emp.email || ''}</Email>
@@ -87,6 +108,7 @@ export async function POST(request: NextRequest) {
       <HourlyRate>${hourlyRate.toFixed(2)}</HourlyRate>
       <TotalHours>${totalHours.toFixed(2)}</TotalHours>
       <TotalAdjustedPay>${totalAdjustedPay.toFixed(2)}</TotalAdjustedPay>
+${checkInfo}
       <Tickets>
 ${ticketDetails}
       </Tickets>
