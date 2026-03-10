@@ -33,6 +33,28 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
   const [showWageModal, setShowWageModal] = useState<{ periodKey: string; userId: string; employeeName: string; totalAdjustedPay: number | null; yearlySalary: number | null } | null>(null)
   const [loading, setLoading] = useState(false)
 
+  // Check/payroll input fields
+  const [checkNumber, setCheckNumber] = useState('')
+  const [federalTax, setFederalTax] = useState('')
+  const [fica, setFica] = useState('')
+  const [stateTax, setStateTax] = useState('')
+  const [sdi, setSdi] = useState('')
+  const [savings, setSavings] = useState('')
+  const [netPay, setNetPay] = useState('')
+  const [grossWages, setGrossWages] = useState('')
+
+  // Reset form fields when modal closes
+  const resetFormFields = () => {
+    setCheckNumber('')
+    setFederalTax('')
+    setFica('')
+    setStateTax('')
+    setSdi('')
+    setSavings('')
+    setNetPay('')
+    setGrossWages('')
+  }
+
   // Calculate hourly wage from yearly salary (2080 hours/year = 40 hrs/week × 52 weeks)
   const hourlyWage = showWageModal?.yearlySalary ? showWageModal.yearlySalary / 2080 : 0
 
@@ -74,12 +96,21 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
       body: JSON.stringify({
         periodKey: showWageModal.periodKey,
         userId: showWageModal.userId,
-        yearlySalary: showWageModal.yearlySalary
+        yearlySalary: showWageModal.yearlySalary,
+        checkNumber,
+        grossWages: parseFloat(grossWages) || 0,
+        federalTax: parseFloat(federalTax) || 0,
+        fica: parseFloat(fica) || 0,
+        stateTax: parseFloat(stateTax) || 0,
+        sdi: parseFloat(sdi) || 0,
+        savings: parseFloat(savings) || 0,
+        netPay: parseFloat(netPay) || 0
       })
     })
 
     if (res.ok) {
       setShowWageModal(null)
+      resetFormFields()
       window.location.reload()
     }
 
@@ -88,14 +119,21 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
 
   const handleGeneratePeriodXml = async (periodKey: string) => {
     setLoading(true)
-    const res = await fetch('/api/generate-period-xml', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ periodKey })
-    })
+    try {
+      const res = await fetch('/api/generate-period-xml', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ periodKey })
+      })
 
-    if (res.ok) {
       const data = await res.json()
+
+      if (!res.ok) {
+        alert(`Error: ${data.error || 'Failed to generate XML'}`)
+        setLoading(false)
+        return
+      }
+
       const blob = new Blob([data.xml], { type: 'application/xml' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -103,6 +141,8 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
       a.download = `dir-period-${periodKey}.xml`
       a.click()
       URL.revokeObjectURL(url)
+    } catch (err) {
+      alert(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`)
     }
     setLoading(false)
   }
@@ -305,10 +345,10 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
 
       {/* Mark Ready for DIR Modal */}
       {showWageModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto py-8">
           <div className="bg-white p-8 max-w-md w-full mx-4 border border-gray-200">
             <h3 className="text-xl font-light mb-6" style={{ color: '#1a1a2e' }}>
-              Mark Ready for DIR
+              Ready for DIR
             </h3>
 
             <div className="space-y-4 mb-6">
@@ -339,9 +379,110 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
                 </div>
               )}
 
-              <p className="text-sm pt-4 border-t border-gray-200" style={{ color: '#6b7280' }}>
-                This will mark the employee as ready for DIR submission. You can then generate the period XML once all employees are ready.
-              </p>
+              {/* Check/Payroll Information */}
+              <div className="pt-4 border-t border-gray-200">
+                <h4 className="text-sm font-medium mb-3" style={{ color: '#1a1a2e' }}>Check Information</h4>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium mb-1" style={{ color: '#6b7280' }}>Check Number</label>
+                    <input
+                      type="text"
+                      value={checkNumber}
+                      onChange={(e) => setCheckNumber(e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:border-gray-500"
+                      placeholder="Enter check number"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: '#6b7280' }}>Gross Wages</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={grossWages}
+                        onChange={(e) => setGrossWages(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:border-gray-500"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: '#6b7280' }}>Federal Tax</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={federalTax}
+                        onChange={(e) => setFederalTax(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:border-gray-500"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: '#6b7280' }}>FICA (Social Security)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={fica}
+                        onChange={(e) => setFica(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:border-gray-500"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: '#6b7280' }}>State Tax</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={stateTax}
+                        onChange={(e) => setStateTax(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:border-gray-500"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: '#6b7280' }}>SDI</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={sdi}
+                        onChange={(e) => setSdi(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:border-gray-500"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: '#6b7280' }}>Savings</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={savings}
+                        onChange={(e) => setSavings(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:border-gray-500"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium mb-1" style={{ color: '#6b7280' }}>Net Pay (Total)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={netPay}
+                      onChange={(e) => setNetPay(e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:border-gray-500"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="flex gap-3">
@@ -351,10 +492,10 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
                 className="flex-1 py-2 px-4 text-sm font-medium text-white transition-colors disabled:opacity-50"
                 style={{ background: '#1a1a2e' }}
               >
-                {loading ? 'Saving...' : 'Mark Ready'}
+                {loading ? 'Saving...' : 'Save'}
               </button>
               <button
-                onClick={() => setShowWageModal(null)}
+                onClick={() => { setShowWageModal(null); resetFormFields(); }}
                 className="py-2 px-4 text-sm font-medium border border-gray-300 hover:border-gray-500 transition-colors"
                 style={{ color: '#1a1a2e' }}
               >
