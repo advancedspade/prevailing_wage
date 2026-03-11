@@ -28,9 +28,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { periodKey } = await request.json()
-
-  const { year, month, period } = parsePayPeriodKey(periodKey)
+  try {
+    const { periodKey } = await request.json()
+    const { year, month, period } = parsePayPeriodKey(periodKey)
   const periodLabel = formatPayPeriodLabel(year, month, period)
 
   const startDay = period === 1 ? 1 : 16
@@ -159,5 +159,9 @@ ${dirNumbers.map(d => `    <DIRNumber>${d}</DIRNumber>`).join('\n')}
 </DIRSubmission>`
 
   return NextResponse.json({ xml })
+  } catch (error) {
+    console.error('Generate XML error:', error)
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to generate XML' }, { status: 500 })
+  }
 }
 

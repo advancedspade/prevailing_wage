@@ -90,28 +90,35 @@ export function PeriodsClient({ periods }: PeriodsClientProps) {
     if (!showWageModal || !showWageModal.yearlySalary) return
     setLoading(true)
 
-    const res = await fetch('/api/save-employee-period', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        periodKey: showWageModal.periodKey,
-        userId: showWageModal.userId,
-        yearlySalary: showWageModal.yearlySalary,
-        checkNumber,
-        grossWages: parseFloat(grossWages) || 0,
-        federalTax: parseFloat(federalTax) || 0,
-        fica: parseFloat(fica) || 0,
-        stateTax: parseFloat(stateTax) || 0,
-        sdi: parseFloat(sdi) || 0,
-        savings: parseFloat(savings) || 0,
-        netPay: parseFloat(netPay) || 0
+    try {
+      const res = await fetch('/api/save-employee-period', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          periodKey: showWageModal.periodKey,
+          userId: showWageModal.userId,
+          yearlySalary: showWageModal.yearlySalary,
+          checkNumber,
+          grossWages: parseFloat(grossWages) || 0,
+          federalTax: parseFloat(federalTax) || 0,
+          fica: parseFloat(fica) || 0,
+          stateTax: parseFloat(stateTax) || 0,
+          sdi: parseFloat(sdi) || 0,
+          savings: parseFloat(savings) || 0,
+          netPay: parseFloat(netPay) || 0
+        })
       })
-    })
 
-    if (res.ok) {
-      setShowWageModal(null)
-      resetFormFields()
-      window.location.reload()
+      if (res.ok) {
+        setShowWageModal(null)
+        resetFormFields()
+        window.location.reload()
+      } else {
+        const data = await res.json()
+        alert(`Error saving: ${data.error || 'Unknown error'}`)
+      }
+    } catch (err) {
+      alert(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`)
     }
 
     setLoading(false)
