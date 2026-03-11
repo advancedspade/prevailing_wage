@@ -68,7 +68,8 @@ export async function POST(request: NextRequest) {
   // Build employee sections
   const employeeSections = employees.map(emp => {
     const empPeriod = employeePeriods.find(ep => ep.user_id === emp.id)
-    const yearlySalary = emp.salary || 0
+    // Convert salary from string (pg returns numeric as string)
+    const yearlySalary = Number(emp.salary) || 0
     const hourlyRate = calculateHourlyRate(yearlySalary) || 0
     const empTickets = allTickets.filter(t => t.user_id === emp.id)
 
@@ -84,21 +85,21 @@ export async function POST(request: NextRequest) {
         <Date>${t.date_worked}</Date>
         <DIRNumber>${t.dir_number}</DIRNumber>
         <Project>${t.project_title}</Project>
-        <Hours>${t.hours_worked}</Hours>
+        <Hours>${Number(t.hours_worked).toFixed(2)}</Hours>
         <AdjustedPay>${ticketAdjustedPay.toFixed(2)}</AdjustedPay>
       </Ticket>`
     }).join('\n')
 
-    // Build check information section
+    // Build check information section (convert strings to numbers - pg returns numeric as string)
     const checkInfo = empPeriod ? `      <CheckInformation>
         <CheckNumber>${empPeriod.check_number || ''}</CheckNumber>
-        <GrossWages>${(empPeriod.gross_wages || 0).toFixed(2)}</GrossWages>
-        <FederalTax>${(empPeriod.federal_tax || 0).toFixed(2)}</FederalTax>
-        <FICA>${(empPeriod.fica || 0).toFixed(2)}</FICA>
-        <StateTax>${(empPeriod.state_tax || 0).toFixed(2)}</StateTax>
-        <SDI>${(empPeriod.sdi || 0).toFixed(2)}</SDI>
-        <Savings>${(empPeriod.savings || 0).toFixed(2)}</Savings>
-        <NetPay>${(empPeriod.net_pay || 0).toFixed(2)}</NetPay>
+        <GrossWages>${Number(empPeriod.gross_wages || 0).toFixed(2)}</GrossWages>
+        <FederalTax>${Number(empPeriod.federal_tax || 0).toFixed(2)}</FederalTax>
+        <FICA>${Number(empPeriod.fica || 0).toFixed(2)}</FICA>
+        <StateTax>${Number(empPeriod.state_tax || 0).toFixed(2)}</StateTax>
+        <SDI>${Number(empPeriod.sdi || 0).toFixed(2)}</SDI>
+        <Savings>${Number(empPeriod.savings || 0).toFixed(2)}</Savings>
+        <NetPay>${Number(empPeriod.net_pay || 0).toFixed(2)}</NetPay>
       </CheckInformation>` : ''
 
     return `    <Employee>
@@ -120,7 +121,7 @@ ${ticketDetails}
   const periodTotalAdjustedPay = employees.reduce((sum, emp) => {
     const empTickets = allTickets.filter(t => t.user_id === emp.id)
     return sum + empTickets.reduce((s, t) => {
-      const adjustedPay = calculateAdjustedPay(Number(t.hours_worked), emp.salary)
+      const adjustedPay = calculateAdjustedPay(Number(t.hours_worked), Number(emp.salary) || 0)
       return s + (adjustedPay || 0)
     }, 0)
   }, 0)
