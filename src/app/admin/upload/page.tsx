@@ -11,6 +11,7 @@ interface ParsedRow {
   dateWorked: string
   totalHours: number
   people: string[]
+  missingDirNumber: boolean
 }
 
 export default function UploadPage() {
@@ -20,24 +21,31 @@ export default function UploadPage() {
 
   const parseCSV = (text: string): ParsedRow[] => {
     const lines = text.trim().split('\n')
-    const headers = lines[0].split(',')
-    
-    // Find column indices
+    // Parse header line properly (may contain quoted fields)
+    const headers = parseCSVLine(lines[0])
+
+    // Find column indices for new CSV format
     const ticketIdx = headers.findIndex(h => h.includes('Ticket #'))
     const nameIdx = headers.findIndex(h => h.includes('Ticket Name'))
-    const dirIdx = headers.findIndex(h => h.includes('DIR #'))
-    const dateIdx = headers.findIndex(h => h.includes('Deliverable Due Date'))
+    const pwIdx = headers.findIndex(h => h.includes('Prevailing Wage'))
+    const dirIdx = headers.findIndex(h => h.includes('DIR Number'))
+    const dateIdx = headers.findIndex(h => h.includes('Dates Worked'))
     const hoursIdx = headers.findIndex(h => h.includes('Total Man Hours'))
-    const peopleIdx = headers.findIndex(h => h.includes('People'))
+    const crewIdx = headers.findIndex(h => h.includes('Crew'))
 
     const rows: ParsedRow[] = []
-    
+
     for (let i = 1; i < lines.length; i++) {
       // Handle CSV with quoted fields containing commas
       const row = parseCSVLine(lines[i])
-      if (row.length < peopleIdx + 1) continue
+      if (row.length < Math.max(ticketIdx, nameIdx, pwIdx, dirIdx, dateIdx, hoursIdx, crewIdx) + 1) continue
 
-      const people = row[peopleIdx]
+      // Only include prevailing wage tickets
+      const isPrevailingWage = row[pwIdx]?.trim().toLowerCase() === 'yes'
+      if (!isPrevailingWage) continue
+
+      // Parse crew (comma-separated names)
+      const people = row[crewIdx]
         .replace(/^"|"$/g, '')
         .split(',')
         .map(p => p.trim())
@@ -45,21 +53,34 @@ export default function UploadPage() {
 
       if (people.length === 0) continue
 
-      // Parse date from M/D/YY format to YYYY-MM-DD
-      const dateParts = row[dateIdx].split('/')
-      let year = parseInt(dateParts[2])
-      if (year < 100) year += 2000
-      const month = dateParts[0].padStart(2, '0')
-      const day = dateParts[1].padStart(2, '0')
-      const dateWorked = `${year}-${month}-${day}`
+      // Parse date - new format is YYYY-MM-DD (e.g., "2026-03-06")
+      const dateRaw = row[dateIdx]?.trim()
+      let dateWorked = ''
+      if (dateRaw) {
+        // Check if it's already YYYY-MM-DD format
+        if (dateRaw.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          dateWorked = dateRaw
+        } else if (dateRaw.includes('/')) {
+          // Handle M/D/YY or M/D/YYYY format
+          const dateParts = dateRaw.split('/')
+          let year = parseInt(dateParts[2])
+          if (year < 100) year += 2000
+          const month = dateParts[0].padStart(2, '0')
+          const day = dateParts[1].padStart(2, '0')
+          dateWorked = `${year}-${month}-${day}`
+        }
+      }
+
+      const dirNumber = row[dirIdx]?.trim() || ''
 
       rows.push({
         ticketNumber: row[ticketIdx],
         projectTitle: row[nameIdx].trim(),
-        dirNumber: row[dirIdx],
+        dirNumber,
         dateWorked,
         totalHours: parseFloat(row[hoursIdx]) || 0,
-        people
+        people,
+        missingDirNumber: !dirNumber
       })
     }
 
@@ -124,6 +145,7 @@ export default function UploadPage() {
   // Count total tickets (one per person per row)
   const totalTickets = parsedData.reduce((sum, row) => sum + row.people.length, 0)
   const uniquePeople = [...new Set(parsedData.flatMap(r => r.people))]
+  const missingDirCount = parsedData.filter(r => r.missingDirNumber).length
 
   return (
     <div className="min-h-screen" style={{ background: '#e8e8e8' }}>
@@ -179,11 +201,20 @@ export default function UploadPage() {
         {/* Preview */}
         {parsedData.length > 0 && (
           <>
+            {/* Missing DIR Warning */}
+            {missingDirCount > 0 && (
+              <div className="p-4 mb-6 border bg-yellow-50 border-yellow-200">
+                <p className="text-yellow-800">
+                  ⚠️ {missingDirCount} ticket{missingDirCount > 1 ? 's' : ''} missing DIR number
+                </p>
+              </div>
+            )}
+
             <div className="bg-white p-6 border border-gray-200 mb-6">
               <h2 className="text-lg font-medium mb-4" style={{ color: '#1a1a2e' }}>
-                Preview ({parsedData.length} rows → {totalTickets} tickets for {uniquePeople.length} people)
+                Prevailing Wage Tickets ({parsedData.length} rows → {totalTickets} tickets for {uniquePeople.length} people)
               </h2>
-              
+
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -192,15 +223,17 @@ export default function UploadPage() {
                       <th className="text-left py-2 px-3" style={{ color: '#6b7280' }}>Project</th>
                       <th className="text-left py-2 px-3" style={{ color: '#6b7280' }}>DIR #</th>
                       <th className="text-left py-2 px-3" style={{ color: '#6b7280' }}>Hours</th>
-                      <th className="text-left py-2 px-3" style={{ color: '#6b7280' }}>People</th>
+                      <th className="text-left py-2 px-3" style={{ color: '#6b7280' }}>Crew</th>
                     </tr>
                   </thead>
                   <tbody>
                     {parsedData.slice(0, 10).map((row, i) => (
-                      <tr key={i} className="border-b border-gray-100">
-                        <td className="py-2 px-3">{row.dateWorked}</td>
+                      <tr key={i} className={`border-b border-gray-100 ${row.missingDirNumber ? 'bg-yellow-50' : ''}`}>
+                        <td className="py-2 px-3">{row.dateWorked || '—'}</td>
                         <td className="py-2 px-3">{row.projectTitle}</td>
-                        <td className="py-2 px-3">{row.dirNumber}</td>
+                        <td className="py-2 px-3">
+                          {row.dirNumber || <span className="text-yellow-600">⚠️ Missing</span>}
+                        </td>
                         <td className="py-2 px-3">{row.totalHours}</td>
                         <td className="py-2 px-3">{row.people.join(', ')}</td>
                       </tr>
