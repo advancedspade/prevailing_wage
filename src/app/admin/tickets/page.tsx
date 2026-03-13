@@ -2,9 +2,10 @@ import { getAuthUserAndProfile } from '@/lib/auth-db'
 import { query } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { STATUS_LABELS, getPayPeriod, calculateAdjustedPay } from '@/lib/types'
+import { getPayPeriod } from '@/lib/types'
 import type { EmployeePeriodStatus, EmployeePeriod } from '@/lib/types'
 import { SignOutButton } from '@/components/sign-out-button'
+import { TicketsTable } from './tickets-table'
 
 interface TicketRow {
   id: string
@@ -86,72 +87,12 @@ export default async function AdminTicketsPage() {
 
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="bg-white border border-gray-200 overflow-hidden">
-          {tickets && tickets.length > 0 ? (
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead style={{ background: '#fafafa' }}>
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: '#6b7280' }}>
-                    Employee
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: '#6b7280' }}>
-                    DIR Number
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: '#6b7280' }}>
-                    Project
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: '#6b7280' }}>
-                    Date
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: '#6b7280' }}>
-                    Hours
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: '#6b7280' }}>
-                    Adjusted Pay
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: '#6b7280' }}>
-                    Status
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {tickets.map((ticket) => {
-                  const periodStatus = getTicketPeriodStatus(ticket)
-                  const adjustedPay = calculateAdjustedPay(Number(ticket.hours_worked), ticket.salary ?? null)
-                  return (
-                    <tr key={ticket.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: '#1a1a2e' }}>
-                        {ticket.full_name || ticket.email || 'Unknown'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" style={{ color: '#1a1a2e' }}>
-                        {ticket.dir_number}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: '#6b7280' }}>
-                        {ticket.project_title}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: '#6b7280' }}>
-                        {new Date(ticket.date_worked).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: '#6b7280' }}>
-                        {ticket.hours_worked}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" style={{ color: adjustedPay === null ? '#dc2626' : '#1a1a2e' }}>
-                        {adjustedPay === null ? 'Pending Salary' : `$${adjustedPay.toFixed(2)}`}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-2 py-1 text-xs font-medium border" style={{ color: '#1a1a2e', borderColor: '#d1d1d1' }}>
-                          {STATUS_LABELS[periodStatus]}
-                        </span>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          ) : (
-            <div className="text-center py-16">
-              <p style={{ color: '#6b7280' }}>No tickets submitted yet</p>
-            </div>
-          )}
+          <TicketsTable
+            tickets={tickets?.map(ticket => ({
+              ...ticket,
+              periodStatus: getTicketPeriodStatus(ticket)
+            })) || []}
+          />
         </div>
       </main>
     </div>
